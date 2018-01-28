@@ -64,6 +64,12 @@ params = {
                 "camera_width": 960,
                 "camera_height": 720,
             },
+            "ssd_mobilenetv1": {
+                "model_width": 640, 
+                "model_height": 640,
+                "model_path": os.path.join(paths["MODEL_PATH"], "ssd_mobilenetv1.om"),
+                "model_processor": "SSDMP",
+            }
 
         },
         "object_tracking":{

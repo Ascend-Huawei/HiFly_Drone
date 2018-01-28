@@ -1,5 +1,6 @@
 import sys
 import os
+import cv2
 from importlib import import_module
 
 sys.path.append("..")
@@ -36,3 +37,14 @@ def init_presenter_server():
     if chan is None:
         raise Exception("Open presenter channel failed")
     return chan
+
+def send_to_presenter_server(chan, result_img):
+    """Sends image/frame to Presenter Server channel
+    :params:
+        + chan          - initialized Presenter Server channel
+        + result_img    - image to be sent to channel
+    Returns: None
+    """
+    _, jpeg_image = cv2.imencode('.jpg', result_img)
+    jpeg_image = AclImage(jpeg_image, result_img.shape[0], result_img.shape[1], jpeg_image.size)
+    chan.send_detection_data(result_img.shape[0], result_img.shape[1], jpeg_image, [])
