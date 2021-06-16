@@ -139,5 +139,7 @@ cython_debug/
 *.pyc
 
 # ignore data and model files
-model/
-data/
+*.om
+*.png
+*.jpg
+*.jpeg
