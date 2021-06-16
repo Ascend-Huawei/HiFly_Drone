@@ -2,10 +2,6 @@
 Object factory for object-detection tasks - returns a fully initialized object 
 """
 import os 
-import sys
-
-path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(path, "../../../common/"))
 
 from atlas_utils.acl_resource import AclResource
 from atlas_utils.acl_model import Model

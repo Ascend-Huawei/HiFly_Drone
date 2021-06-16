@@ -87,14 +87,14 @@ To add your own inference module to this project, you need:
     ```python
     "object_detection": {
         "face_detection": {
-				"model_width": 416,
-				"model_height": 416,
-				"model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
-				"model_processor": "FaceDetectionProcessor",
-				"model_info": "<model description>",
+                "model_width": 416,
+                "model_height": 416,
+                "model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
+                "model_processor": "FaceDetectionProcessor",
+                "model_info": "<model description>",
                 "camera_width": 960,
                 "camera_height": 720,
-			}
+            }
     }
     ```
 

@@ -18,9 +18,6 @@ import numpy as np
 import sys
 from model_processors.BaseProcessor import BaseProcessor
 
-# path = os.path.dirname(os.path.abspath(__file__))
-# sys.path.append(os.path.join(path, "../../../../common/"))
-
 class ModelProcessor(BaseProcessor):
     """acl model wrapper"""
     def __init__(self, params):
@@ -45,7 +42,7 @@ class ModelProcessor(BaseProcessor):
         return image
 
     def postprocessing(self, image, resultList, threshold=0.3):
-	    # """
+        # """
         # draw the bounding boxes for all detected hands with confidence greater than a set threshold
         # """
         num_detections = resultList[0][0].astype(np.int)
