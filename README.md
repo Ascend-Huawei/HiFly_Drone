@@ -50,9 +50,9 @@ This section covers how to run inference on UAV's camera livefeed.
 
 3. Once the offline model is in place and the UAV is connected to the 200 DK. Activate the virtual environment and navigate to the project's `src` directory to run:
 
-    1. To start the presenter server to view the live video
+    1. To prepare the presenter server to view live video footage
 
-        `bash ../../../common/run_presenter_server.sh src/uav_obj_detect.conf`
+        `bash lib/server/run_presenter_server.sh uav_presenter_server.conf`
     
     2. Run real-time inference
 
@@ -79,11 +79,11 @@ To add your own inference module to this project, you need:
 
 1. An offline model stored the `model` subdirectory (you can view the projects in [Ascend Samples](https://gitee.com/ascend/samples) for more ideas)
 
-2. A `Processor` class inherited from `BaseProcessor` to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
+2. A `Processor` class is inherited from `BaseProcessor` to take care of the offline model's inputs and outputs by overriding the parent's preprocess and postprocess methods
 
-3. Add the models info to the dictionary in params.py so the interface will know which Processor and model to load.
+3. Add the models info to the dictionary in `utils/params.py` so the interface will know which Processor and model to load
 
-    For example, to add a YOLO face detector module for object detection, you would add another dictionary item inside object_detection. The dictionary is required to have the following keys to run the `ModuleSelector` and `Processor`: `model_width`, `model_height`, `model_path`, `model_processor` 
+    For example, to add a YOLO face detector module for object detection, you would add another dictionary item inside object_detection. The dictionary is required to have the following keys to run the `ModuleSelector` and `Processor`: `model_width`, `model_height`, `model_path`, `model_processor`
     ```python
     "object_detection": {
         "face_detection": {
@@ -92,12 +92,12 @@ To add your own inference module to this project, you need:
                 "model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
                 "model_processor": "FaceDetectionProcessor",
                 "model_info": "<model description>",
-                "camera_width": 960,
+                "camera_width": "<optional parameters>"960,
                 "camera_height": 720,
             }
     }
     ```
-
+    > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
 ## Available Modules
 A list of currently available modules
