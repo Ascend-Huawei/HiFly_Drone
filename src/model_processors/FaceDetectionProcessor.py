@@ -19,8 +19,6 @@ import sys
 
 from model_processors.BaseProcessor import BaseProcessor
 
-path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(path, "../../../../common/"))
 
 class ModelProcessor(BaseProcessor):
     def __init__(self, params):

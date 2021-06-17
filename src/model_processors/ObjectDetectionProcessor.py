@@ -19,9 +19,6 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 from model_processors.BaseProcessor import BaseProcessor
 
-path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(path, "../../../../common/"))
-# from atlas_utils.acl_model import Model
 from atlas_utils.acl_dvpp import Dvpp
 from atlas_utils.acl_image import AclImage
 

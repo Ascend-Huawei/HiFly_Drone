@@ -7,6 +7,9 @@ import sys
 import os
 import time
 
+sys.path.append("lib")
+sys.path.append("model_processors")
+
 from utils.uav_utils import connect_uav 
 from utils.params import params
 from utils.ModuleSelector import ModuleSelector

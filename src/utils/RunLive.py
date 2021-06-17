@@ -6,10 +6,6 @@ import time
 import _thread
 from importlib import import_module
 
-path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(path, "../../../../common/"))
-sys.path.append("../model_processors/")
-
 from utils.uav_utils import  manual_control
 from atlas_utils.presenteragent import presenter_channel
 from atlas_utils.acl_image import AclImage
