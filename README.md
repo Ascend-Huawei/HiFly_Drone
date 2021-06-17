@@ -22,21 +22,19 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Available Modules](#available-modules)
 
 ## Installation
-1. Git clone the Ascend/samples repo: 
+1. Git clone this repo 
 
-    `git clone https://gitee.com/ascend/samples.git`
+    `git clone  https://github.com/Ascend-Huawei/HiFly_Drone.git`
 
-2. git clone this repo and place it in `samples/python/contrib`
+2. Navigate to the project directory: 
 
-3. Navigate to the project directory: 
+    `cd HiFly_Drone`
 
-    `cd ~/samples/python/contrib/HiFly_Drone`
-
-4. Create and activate python virutal environment: 
+3. Create and activate python virutal environment: 
 
     `python3 -m venv venv && source venv/bin/activate`
 
-5. Install the required dependencies to run this project:
+4. Install the required dependencies to run this project:
 
     `pip3 install -r requirements.txt`
 
@@ -48,7 +46,7 @@ This section covers how to run inference on UAV's camera livefeed.
 2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://www.notion.so/TP-Link-wireless-router-setup-48546689248b4589a366a1a72173c439).
     >Note that you are not limited to only TPLink Wireless Routers 
 
-3. Once the offline model is in place and the UAV is connected to the 200 DK. Activate the virtual environment and navigate to the project's `src` directory to run:
+3. Once the offline model is in place and the UAV is connected to the 200 DK. Activate the virtual environment and navigate to the project's `src` subdirectory:
 
     1. To prepare the presenter server to view live video footage
 
