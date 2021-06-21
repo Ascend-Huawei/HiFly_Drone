@@ -6,7 +6,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
 [Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
-[DJITelloPy](https://github.com/damiafuentes/DJITelloPy) - third party open-source Python interface built on top of the official Tello SDK
+[DJITelloPy](https://github.com/damiafuentes/DJITelloPy) - third party open-source Python interface built on top of the official Tello SDK<br>
 [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
 
 ### Prerequisites
