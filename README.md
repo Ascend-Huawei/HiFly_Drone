@@ -6,12 +6,13 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
 [Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
-[DJITelloPy](https://github.com/damiafuentes/DJITelloPy) - third party open-source Python interface built on top of the official Tello SDK 
+[DJITelloPy](https://github.com/damiafuentes/DJITelloPy) - third party open-source Python interface built on top of the official Tello SDK
+[TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
 
 ### Prerequisites
 - [Atlas 200 DK](https://e.huawei.com/ph/products/cloud-computing-dc/atlas/atlas-200)
 - [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
-- Wireless Router
+- Wireless Router (TP-Link TL-WR902AC)
 
 <hr>
 
@@ -43,7 +44,7 @@ This section covers how to run inference on UAV's camera livefeed.
 
 1. Refer to the [list of support modules](#available-modules) below and download the one you wish to run. Once downloaded, store the `.om` file inside the `models` subdirectory. 
 
-2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://www.notion.so/TP-Link-wireless-router-setup-48546689248b4589a366a1a72173c439).
+2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup).
     >Note that you are not limited to only TPLink Wireless Routers 
 
 3. Once the offline model is in place and the UAV is connected to the 200 DK. Activate the virtual environment and navigate to the project's `src` subdirectory:
