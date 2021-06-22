@@ -42,7 +42,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 ## How to run the project
 This section covers how to run inference on UAV's camera livefeed. 
 
-1. Refer to the [list of support modules](#available-modules) below and download the one you wish to run. Once downloaded, store the `.om` file inside the `models` subdirectory. 
+1. Refer to the [list of supported modules](#available-modules) below and download the one you wish to run. Once downloaded, store the `.om` file inside the `models` subdirectory. 
 
 2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup).
     >Note that you are not limited to only TPLink Wireless Routers 
@@ -76,11 +76,11 @@ The modularity feature of this project is enabled by the `ModuleSelector`. It ta
 ### Project Extension
 To add your own inference module to this project, you need:
 
-1. An offline model stored the `model` subdirectory (you can view the projects in [Ascend Samples](https://gitee.com/ascend/samples) for more ideas)
+1. An offline model stored in the `model` subdirectory (you can view the projects in [Ascend Samples](https://gitee.com/ascend/samples) for more ideas or use the Ascend Tensor Compiler [ATC] to convert .caffe or .pb models into .om models).
 
-2. A `Processor` class is inherited from `BaseProcessor` to take care of the offline model's inputs and outputs by overriding the parent's preprocess and postprocess methods
+2. Write a custom `Processor` class (inherited from `BaseProcessor`) to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
 
-3. Add the models info to the dictionary in `utils/params.py` so the interface will know which Processor and model to load
+3. Register the model's info to the dictionary in `src/utils/params.py` such that the `ModuleSelector` will know which Processor and model to load during selection
 
     For example, to add a YOLO face detector module for object detection, you would add another dictionary item inside object_detection. The dictionary is required to have the following keys to run the `ModuleSelector` and `Processor`: `model_width`, `model_height`, `model_path`, `model_processor`
     ```python
