@@ -31,6 +31,15 @@ paths = validate_paths()
 params = {
     "task": {
         "classification": {
+            "gesture_yuv": {
+                "model_width": 224,
+                "model_height": 224,
+                "model_path": os.path.join(paths["MODEL_PATH"], "gesture_yuv.om"),
+                # "model_processor": os.path.join(paths["SRC_PATH"], "ObjectDetectionProcessor.py"),
+                "model_processor": "HandGestureProcessor",
+                # "live_runner": "run_live_obj_detection",
+                "model_info": "https://gitee.com/ascend/modelzoo/tree/master/contrib/TensorFlow/Research/cv/gesture_recognition/ATC_gesture_recognition_Caffe_AE"
+            },
 
         },
         "object_detection": {
