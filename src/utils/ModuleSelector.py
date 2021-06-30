@@ -5,12 +5,14 @@ class ModuleSelector():
         self.params = params
             
     def user_input(self):
-        input_task = input("Choose task (C - Classification, O - Object Detection, S - Segmentation): ")
+        input_task = input("Choose task (C - Classification, O - Object Detection, S - Segmentation), D - Depth Estimation: ")
         # select classification model - print the avaiable models to users and let them choose
         if input_task.lower() == "c":
             pass
-        if input_task.lower() == "o":
+        elif input_task.lower() == "o":
             self.task = "object_detection"
+        elif input_task.lower() == "d":
+            self.task = "depth_estimation"
         self._select_model()
 
     def _select_model(self):

@@ -60,14 +60,27 @@ params = {
                 "model_info": "<Example URL>",
                 "camera_width": 960,
                 "camera_height": 720,
-            }
+            },
+
         },
         "segmentation": {
 
         },
+        "depth_estimation":{
+            "indoor_depth_estimation": {
+                "model_width": 640,
+                "model_height": 480,
+                "model_path": os.path.join(paths["MODEL_PATH"], "indoor_depth_estimation.om"),
+                "model_processor": "IndoorDepthProcessor",
+                "live_runner": "run_live_indoor_depth_estimation",
+                "model_info": "https://github.com/shariqfarooq123/AdaBins",
+                "camera_width": 960,
+                "camera_height": 720,
+            },
+        },
         "other": {
 
-        }
+        },
     },
     "presenter_server_sh": paths["PRESENTER_SERVER_SH"],
     "presenter_server_conf": paths["PRESENTER_SERVER_CONF"]

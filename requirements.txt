@@ -32,3 +32,4 @@ sympy==1.7.1
 tornado==5.1
 urllib3==1.26.3
 wcwidth==0.2.5
+matplotlib
