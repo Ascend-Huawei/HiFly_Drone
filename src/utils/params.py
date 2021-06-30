@@ -46,10 +46,10 @@ params = {
             "hand_detection": {
                 "model_width": 300,
                 "model_height": 300,
-                "model_path": os.path.join(paths["MODEL_PATH"], "Hand_detection.om"),
+                "model_path": os.path.join(paths["MODEL_PATH"], "hand_detection.om"),
                 "model_processor": "HandDetectionProcessor",
                 "live_runner": "run_live_hand_detection",
-                "model_info": "<Example URL>"
+                "model_info": "https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee"
             },
             "face_detection": {
                 "model_width": 416,
