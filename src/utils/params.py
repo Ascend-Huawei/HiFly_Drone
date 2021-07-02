@@ -32,12 +32,10 @@ params = {
     "task": {
         "classification": {
             "gesture_yuv": {
-                "model_width": 224,
+                "model_width": 256,
                 "model_height": 224,
                 "model_path": os.path.join(paths["MODEL_PATH"], "gesture_yuv.om"),
-                # "model_processor": os.path.join(paths["SRC_PATH"], "ObjectDetectionProcessor.py"),
                 "model_processor": "HandGestureProcessor",
-                # "live_runner": "run_live_obj_detection",
                 "model_info": "https://gitee.com/ascend/modelzoo/tree/master/contrib/TensorFlow/Research/cv/gesture_recognition/ATC_gesture_recognition_Caffe_AE"
             },
 
@@ -47,7 +45,6 @@ params = {
                 "model_width": 416,
                 "model_height": 416,
                 "model_path": os.path.join(paths["MODEL_PATH"], "yolov3.om"),
-                # "model_processor": os.path.join(paths["SRC_PATH"], "ObjectDetectionProcessor.py"),
                 "model_processor": "ObjectDetectionProcessor",
                 "live_runner": "run_live_obj_detection",
                 "model_info": "https://gitee.com/ascend/modelzoo/tree/master/contrib/TensorFlow/Research/cv/yolov3/ATC_yolov3_caffe_AE"

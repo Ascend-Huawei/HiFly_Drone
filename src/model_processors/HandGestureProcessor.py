@@ -16,6 +16,7 @@ import os
 import cv2
 import numpy as np
 import sys
+from PIL import Image, ImageDraw, ImageFont
 from model_processors.BaseProcessor import BaseProcessor
 
 from atlas_utils.acl_dvpp import Dvpp
@@ -51,6 +52,8 @@ class ModelProcessor(BaseProcessor):
     def __init__(self, params):
         super().__init__(params)
         self._dvpp = Dvpp(self._acl_resource)
+        if not os.path.exists("../data/gesture_yuv"):
+            os.mkdir("../data/gesture_yuv")
         self._tmp_file = "../data/gesture_yuv/tmp.jpg"
 
     """Try with default ACLImage and DVPP implementation - then implement CV2 and image memory implement if time permits"""
@@ -60,20 +63,22 @@ class ModelProcessor(BaseProcessor):
         resized_image = self._dvpp.resize(yuv_image, self._model_width, self._model_height)
         return resized_image
 
-    def postprocess(self, infer_output, image_file):
+    def postprocess(self, infer_output, origin_img):
         data = infer_output[0]
         vals = data.flatten()
         top_k = vals.argsort()[-1:-2:-1]
         for n in top_k:
             object_class = self.get_gesture_categories(n)
         if len(top_k):
+            print("postprocess - second if")
             object_class = self.get_gesture_categories(top_k[0])
-            output_path = os.path.join(os.path.join(SRC_PATH, "../outputs"), os.path.basename(image_file))
-            origin_img = Image.open(image_file)
+            origin_img = Image.fromarray(origin_img)
             draw = ImageDraw.Draw(origin_img)
             font = ImageFont.load_default()
             draw.text((10, 50), object_class, font=font, fill=255)
-            origin_img.save(output_path)
+            return np.array(origin_img)
+
+        return np.array(origin_img)
     
     def predict(self, frame):
         cv2.imwrite(self._tmp_file, frame)
@@ -81,14 +86,12 @@ class ModelProcessor(BaseProcessor):
         # image = AclImage(image_file)
         # resized_image = self.preprocess(image)
         resized_image = self.preprocess(self._acl_image)
-
-        # result = self.inference([resized_image, ])
-        result = self.model.execute([preprocessed, self._image_info])
-        gesture.postprocess(result, image_file)
-
+        result = self.model.execute([resized_image,])
+        result = self.postprocess(result, frame)
+        return result
 
     def get_gesture_categories(self, gesture_id):
-        if gesture_id >= len(gesture_categories):
+        if gesture_id >= len(ModelProcessor.gesture_categories):
             return "unknown"
         else:
-            return gesture_categories[gesture_id]
+            return ModelProcessor.gesture_categories[gesture_id]
