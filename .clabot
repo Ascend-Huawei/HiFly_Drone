@@ -2,5 +2,5 @@
   "contributors": ["jwillow19"],
   "label": "cla-present",
   "message": "Thank you for your contribution and **Welcome to our Open Source Community!**\n\nTo ensure your pull request is successfully integrated, we ask all our open source contributors to sign a [Contributor License Agreement]().\n\nHaving reviewed our contributor list, we require a CLA for the following people : ({{usersWithoutCLA}}).\n\nIf you need help obtaining a CLA, please read the [Requirements for Contributions]() section of our CLA wiki or email [maintainer@hifly]() with your questions.\n\nThanks once again for your contribution. Let us work with you to make the CLA process quick, easy and efficient so we can move forward with reviewing and accepting your pull request."
-  "recheckComment": "/check-cla"
+  "recheckComment": "check-cla"
 }
