@@ -2,6 +2,7 @@
 Object factory for object-detection tasks - returns a fully initialized object 
 """
 import os 
+from abc import abstractmethod
 
 from atlas_utils.acl_resource import AclResource
 from atlas_utils.acl_model import Model
@@ -19,8 +20,10 @@ class BaseProcessor:
         # Init Model
         self.model = Model(params['model_path'])
 
+    @abstractmethod
     def preprocess(self):
-        raise NotImplementedError
-    
+        pass
+
+    @abstractmethod 
     def postprocess(self):
-        raise NotImplementedError
+        pass
