@@ -16,6 +16,7 @@ import cv2
 from functools import partial
 import logging
 import numpy as np
+from PIL import Image
 
 
 sys.path.append("..")
@@ -46,74 +47,113 @@ def initializer(initargs):
     model_name, frame = initargs
     if not inited:
         print("ModuleProcessor initialization...")
-        if model_name == "hand":
+        if model_name == "hand_detection":
             mp = HDModelProcessor(params["task"]["object_detection"]["hand_detection"])
             logging.info(f"HandDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
-        elif model_name == "object":
+        elif model_name == "object_detection":
             mp = ODModelProcessor(params["task"]["object_detection"]["yolov3"])
             logging.info(f"ObjectDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
+        elif model_name == "face_detection":
+            mp = FDModelProcessor(params["task"]["object_detection"]["face_detection"])
+            logging.info(f"FaceDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
         else:
             pass
         inited = True
     logging.info(f"MP {mp} already initialized in Processor {os.getpid()}, prepare for inferece...")
     assert mp is not None, f"ModuleProcessor on {os.getpid()} is None. Try again."
-    return mp.predict(frame)
+    return mp.predict(frame), model_name
 
 
 class ResultHandler:
-    def __init__(self, parentID, num_models=2):
+    """
+    Accept parentID (MainProcessor iD) and models (list) and handles inference results
+    TODO: image fusion, pass onto PresenterServer
+    """
+    data_dir = "../../data/parallel"
+    def __init__(self, parentID, models):
         self.pid = parentID
-        self.num_models = num_models
-    
-    def save_to(self, ):
-        """saves the result (frames - ndarray, images) to the corresponding directory
-        require knowledge of the correct directory
+        self.models = models
+        self._get_save_path()
+
+    def _output_tracker(self, model_name):
         """
-        pass
+        Set attribute to track the frame count for each model and returns the name of the latest frame to be used for saving 
+        """
+        attr = model_name + "_frame_count"
+        try:
+            frame_count = getattr(self, attr)
+            setattr(self, attr, frame_count + 1)
+            return str(frame_count) + ".png"
+        except AttributeError:
+            # no attribute - initialize as 0 and return
+            setattr(self, attr, 0)
+            return str(getattr(self, attr)) + "png"
+
+    def _get_save_path(self):
+        self.out_dir = []
+        for model in self.models:
+            output_dir = os.path.join(self.data_dir, model)
+            if output_dir not in self.out_dir:
+                self.out_dir.append(output_dir)
+                if not os.path.exists(output_dir):
+                    os.mkdir(output_dir)
+                    print("Created output path: ", output_dir)
+                else:
+                    print(f"Pre-exist files located in {output_dir}, removing files...")
+                    for f in os.listdir(output_dir):
+                        os.remove(os.path.join(output_dir, f))
+
+    @staticmethod
+    def _is_pil_image(img):
+        return isinstance(img, Image.Image)
+
+    @staticmethod
+    def _is_numpy_image(img):
+        return isinstance(img, np.ndarray) and (img.ndim in [2,3])
+
+    def handle(self, future):
+        """
+        Unpack results and save image to the corresponding directory - model_name is guarantee to be in self.out_dir
+        :param: 
+            result - FutureObject of type Typle(inference_output, model_name)
+        """
+        inference_res, model_name = future.result()
+        if not (self._is_pil_image(inference_res) or self._is_numpy_image(inference_res)):
+            raise TypeError(f"Inference result should be PIL or ndarray. Got {type(inference_res)} instead")
         
-# def kill_all(e):
-#     e.shutdown(wait=True, cancel_futures=False)
+        save_dir = os.path.join(self.data_dir, model_name)
+        out_name = self._output_tracker(model_name)
+        if isinstance(inference_res, np.ndarray):
+            cv2.imwrite(os.path.join(save_dir, out_name), inference_res)
 
-# def inference(args):
-#     inited_mp, frame = args
-#     return inited_mp.predict(frame)
 
-# def mp_initializer(model_name):
-#     if model_name == "hand_detection":
-#         return HDModelProcessor(params["task"]["object_detection"]["hand_detection"])
-#     elif model_name == "face_detection":
-#         return FDModelProcessor(params["task"]["object_detection"]["face_detection"])
+def kill_all(e):
+    e.shutdown(wait=True, cancel_futures=False)
 
-# def initmap(executor, mp_initializer, initargs, frame):
-#     """initarg = name of model
-#     initmap maps each ModelProcessor with the frame - the ModelProcessor is initialized by
-#         mp_initializer based on initargs (model_name)
-    
-#     """
-#     return executor.map(partial(mp_initializer, initargs), frame)
 
 ## Parameters ##
 MAX_WORKERS = 3
+models = ["face_detection", "object_detection",]
 
-### Try to make multiprocess inference on a list of ndarrays
-models = ["hand", "object", "object"]
+# A pre-recorded video - need to change this to something else if someone else is using it
 cap = cv2.VideoCapture("../../data/handGesture.avi")
 
-"""
-    Each process calls initializer ONCE and returns a unique ModelProcessor object (based on model)
-    Child processes uses this ModelProcessor object to iteratively do inference
-    want to executor.map(inited_mp.predict, frame) where frame is continuously coming in
+res_handler = ResultHandler(os.getpid(), models)
+
 
 """
+    Using ProcessPoolExecutor to submit asynchronously executions of tasks (initializer). Will set global flag if no globals are set.
+    Then initialize the corresponding ModelProcessor based on global flag ONCE. Future calls to the target function will utilize the pre-initialize
+    ModelProcessor to make inference in parallel.
 
-
+    FutureObject encapsulates the asynchronous execution of a callable - returns a tuple if callable (initializer) is ran successfully without raising 
+    an Exception.
+"""
 logging.basicConfig(filename='exec.log', level=logging.DEBUG)
-frame_counter = 0
 with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
     while cap.isOpened():
         _, frame_org = cap.read()
         assert frame_org is not None, "Frame is None"
-        frame_counter += 1
         args = ((model, frame_org) for model in models)
 
         # Works
@@ -123,12 +163,8 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor
                 print("FutureObject exception encountered, saving to log..")
                 logging.exception(future.exception())
             else:
-                # ResultHandler
-                print(type(future.result()))
-                
-
-        print(f"Frame: {frame_counter}")
-
+                future.add_done_callback(res_handler.handle)
+        
     cap.release()
     time.sleep(5)
     kill_all(executor)
