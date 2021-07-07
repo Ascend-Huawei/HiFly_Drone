@@ -1,5 +1,5 @@
 # Atlas 200 DK x DJI Tello Ryze
-Introducing the Ascend Eco-Platform for Intelligent UAVs - Enabled by the Atlas 200 DK and DJI Tello to achieve real-time deep learning solutions and fast prototyping to developers.
+Introducing the Ascend Eco-Platform for Intelligent UAVs - Enabled by the Atlas 200 DK and DJI Tello to achieve real-time deep learning solutions and fast prototyping for developers.
 This project was created while keeping in mind of modularity and fast prototype development. We hope to build ready-to-use modularized capabilities for developers interested in taking deep learning to the realm of UAVs.
 
 ### Useful Links
