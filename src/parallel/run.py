@@ -73,7 +73,8 @@ class ResultHandler:
     def __init__(self, parentID, models):
         self.pid = parentID
         self.models = models
-        self._get_save_path()
+        self._set_save_path()
+        self.frame_count = 0
 
     def _output_tracker(self, model_name):
         """
@@ -89,18 +90,22 @@ class ResultHandler:
             setattr(self, attr, 0)
             return str(getattr(self, attr)) + "png"
 
-    def _get_save_path(self):
-        self.out_dir = []
+    def _set_save_path(self):
+        self.out_dirs = []
+        fused_dir = os.path.join(self.data_dir, "fused") 
+        self.out_dirs.append(fused_dir)
         for model in self.models:
             output_dir = os.path.join(self.data_dir, model)
-            if output_dir not in self.out_dir:
-                self.out_dir.append(output_dir)
-                if not os.path.exists(output_dir):
-                    os.mkdir(output_dir)
-                    print("Created output path: ", output_dir)
-                else:
-                    print(f"Pre-exist files located in {output_dir}, removing files...")
-                    for f in os.listdir(output_dir):
+            if output_dir not in self.out_dirs:
+                self.out_dirs.append(output_dir)
+
+        for dir_name in self.out_dirs:
+            try:
+                os.mkdir(dir_name)
+                print(f"Created output path: {output_dir}")
+            except FileExistsError as err:
+                print(f"{output_dir} already exists, emptying directory...")
+                for f in os.listdir(output_dir):
                         os.remove(os.path.join(output_dir, f))
 
     @staticmethod
@@ -113,19 +118,31 @@ class ResultHandler:
 
     def handle(self, future):
         """
-        Unpack results and save image to the corresponding directory - model_name is guarantee to be in self.out_dir
+        Unpack FutureObject result and saves image to the corresponding directory - model_name is guaranteed to be in self.out_dir by initialization.
         :param: 
             result - FutureObject of type Typle(inference_output, model_name)
         """
         inference_res, model_name = future.result()
         if not (self._is_pil_image(inference_res) or self._is_numpy_image(inference_res)):
             raise TypeError(f"Inference result should be PIL or ndarray. Got {type(inference_res)} instead")
-        
+            
         save_dir = os.path.join(self.data_dir, model_name)
         out_name = self._output_tracker(model_name)
         if isinstance(inference_res, np.ndarray):
             cv2.imwrite(os.path.join(save_dir, out_name), inference_res)
 
+    def fusion(self, lst):
+        """
+        Input is a list of FutureObjects. Fuse the inference image ouptuts together and save them in the fuse directory. 
+        """
+        images = [future.result()[0] for future in lst]
+        fuse = cv2.hconcat(images)
+        
+        save_dir = os.path.join(self.data_dir, "fused")
+        frame_name = str(self.frame_count) + ".png"
+        frame_out_path = os.path.join(save_dir, frame_name)
+        cv2.imwrite(frame_out_path, fuse)
+        self.frame_count += 1
 
 def kill_all(e):
     e.shutdown(wait=True, cancel_futures=False)
@@ -140,7 +157,6 @@ cap = cv2.VideoCapture("../../data/handGesture.avi")
 
 res_handler = ResultHandler(os.getpid(), models)
 
-
 """
     Using ProcessPoolExecutor to submit asynchronously executions of tasks (initializer). Will set global flag if no globals are set.
     Then initialize the corresponding ModelProcessor based on global flag ONCE. Future calls to the target function will utilize the pre-initialize
@@ -153,7 +169,9 @@ logging.basicConfig(filename='exec.log', level=logging.DEBUG)
 with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
     while cap.isOpened():
         _, frame_org = cap.read()
-        assert frame_org is not None, "Frame is None"
+        if frame_org is None:
+            print("VideoCapture frame is None. Releasing VidCap and killing all processors in pool...")
+            break
         args = ((model, frame_org) for model in models)
 
         # Works
@@ -162,9 +180,13 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor
             if future.exception() is not None:
                 print("FutureObject exception encountered, saving to log..")
                 logging.exception(future.exception())
-            else:
-                future.add_done_callback(res_handler.handle)
-        
+            # Save model output to model folder
+            # else:
+            #     future.add_done_callback(res_handler.handle)
+
+        # Save outputs to fusion folder
+        res_handler.fusion(res)
+
     cap.release()
     time.sleep(5)
     kill_all(executor)
