@@ -27,15 +27,8 @@ from model_processors.IndoorDepthProcessor import ModelProcessor as DEModelProce
 from model_processors.ObjectDetectionProcessor import ModelProcessor as ODModelProcessor
 from model_processors.HandDetectionProcessor import ModelProcessor as HDModelProcessor
 from model_processors.FaceDetectionProcessor import ModelProcessor as FDModelProcessor
-
-
-
-"""
-1. Instaniate Models then do inference in parallel
-    - put submit in queue 
-2. Wait until both processes are completed, grab the result and pass to fusion
-
-"""
+from atlas_utils.presenteragent import presenter_channel
+from atlas_utils.acl_image import AclImage
 
 def initializer(initargs):
     # verify if global vars are initialized in this processor and their values
@@ -44,7 +37,7 @@ def initializer(initargs):
         global inited, mp
         inited, mp = False, None
 
-    # logging.basicConfig(filename='parallel.log', level=logging.DEBUG)
+    logging.basicConfig(filename='parallel.log', level=logging.DEBUG)
     model_name, frame = initargs
     if not inited:
         print("ModuleProcessor initialization...")
@@ -119,6 +112,13 @@ class ResultHandler:
     def _is_numpy_image(img):
         return isinstance(img, np.ndarray) and (img.ndim in [2,3])
 
+    @staticmethod
+    def _hconcat_resize_min(im_list, interpolation=cv2.INTER_CUBIC):
+        h_min = min(im.shape[0] for im in im_list)
+        im_list_resize = [cv2.resize(im, (int(im.shape[1] * h_min / im.shape[0]), h_min), interpolation=interpolation)
+                        for im in im_list]
+        return cv2.hconcat(im_list_resize)
+
     def handle(self, future):
         """
         Unpack FutureObject result and saves image to the corresponding directory - model_name is guaranteed to be in self.out_dir by initialization.
@@ -127,29 +127,32 @@ class ResultHandler:
         """
         inference_res, model_name = future.result()
         if not (self._is_pil_image(inference_res) or self._is_numpy_image(inference_res)):
-            raise TypeError(f"Inference result should be PIL or ndarray. Got {type(inference_res)} instead")
+            raise TypeError(f"Inference result should be PIL or ndarray. Got {type(inference_res)} instead.")
             
         save_dir = os.path.join(self.data_dir, model_name)
         out_name = self._output_tracker(model_name)
         if isinstance(inference_res, np.ndarray):
             cv2.imwrite(os.path.join(save_dir, out_name), inference_res)
 
-    def fusion(self, lst):
+    def fusion(self, lst, write=False):
         """
         Input is a list of FutureObjects. Fuse the inference image ouptuts together and save them in the fused directory. 
         """
         images = [future.result()[0] for future in lst]
         for image in images:
             if not (self._is_pil_image(image) or self._is_numpy_image(image)):
-                raise TypeError(f"Inference result should be PIL or ndarray. Got {type(image)} instead")
+                raise TypeError(f"Inference result should be PIL or ndarray. Got {type(image)} instead.")
 
-        fuse = cv2.hconcat(images)
+        fused = self._hconcat_resize_min(images)
+
+        if write: 
+            save_dir = os.path.join(self.data_dir, "fused")
+            frame_name = str(self.frame_count) + ".png"
+            frame_out_path = os.path.join(save_dir, frame_name)
+            cv2.imwrite(frame_out_path, fuse)
+            self.frame_count += 1
         
-        save_dir = os.path.join(self.data_dir, "fused")
-        frame_name = str(self.frame_count) + ".png"
-        frame_out_path = os.path.join(save_dir, frame_name)
-        cv2.imwrite(frame_out_path, fuse)
-        self.frame_count += 1
+        return fused
 
 def kill_all(e):
     e.shutdown(wait=True, cancel_futures=False)
@@ -157,9 +160,11 @@ def kill_all(e):
 
 ## Parameters ##
 MAX_WORKERS = 3
-# models = ["face_detection", "object_detection",]
-models = ["depth_estimation", "object_detection",]
+models = ["face_detection", "object_detection",]
+# models = ["depth_estimation", "object_detection",]
 test_capture = "../../data/handGesture.avi" # A pre-recorded video - need to change this to something else if someone else is using it
+SRC_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PRESENTER_SERVER_CONF = os.path.join(SRC_PATH, "uav_presenter_server.conf")
 
 """
 DEV LOG
@@ -179,12 +184,18 @@ TODO:
         currently handling frame one-by-one and not utilizing all available processors
     - Compare FPS of: 
         - parallel inference vs single inference without Queue
+            + DE & OD with 3 workers ~= 1-2fps
+            + FD & OD with 3 workers ~= 7fps
         - parallel inference vs single inference with Queue
         - resource utilization (CPU %)
     - Integration of parallel inference to platform once finalize
 """
 cap = cv2.VideoCapture(test_capture)
 res_handler = ResultHandler(os.getpid(), models)
+
+chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
+if chan is None:
+    print("Open presenter channel failed")
 
 logging.basicConfig(filename='exec.log', level=logging.DEBUG)
 with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -201,12 +212,17 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor
             if future.exception() is not None:
                 print("FutureObject exception encountered, saving exception to log..")
                 logging.exception(future.exception())
-            # Save model output to model folder
-            else:
-                future.add_done_callback(res_handler.handle)
+            # Uncomment else clause below to save individual model output to model folder
+            # else:
+            #     future.add_done_callback(res_handler.handle)
 
         # Uncomment below to save fusion models outputs to fused folder - currently does not support DE fusion due to output dimension mismatch
-        # res_handler.fusion(res)
+        fused = res_handler.fusion(res)
+
+        _, jpeg_image = cv2.imencode('.jpg', fused)
+        jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
+        chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
+
 
     cap.release()
     time.sleep(5)
