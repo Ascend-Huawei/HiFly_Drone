@@ -136,9 +136,13 @@ class ResultHandler:
 
     def fusion(self, lst):
         """
-        Input is a list of FutureObjects. Fuse the inference image ouptuts together and save them in the fuse directory. 
+        Input is a list of FutureObjects. Fuse the inference image ouptuts together and save them in the fused directory. 
         """
         images = [future.result()[0] for future in lst]
+        for image in images:
+            if not (self._is_pil_image(image) or self._is_numpy_image(image)):
+                raise TypeError(f"Inference result should be PIL or ndarray. Got {type(image)} instead")
+
         fuse = cv2.hconcat(images)
         
         save_dir = os.path.join(self.data_dir, "fused")
@@ -153,21 +157,35 @@ def kill_all(e):
 
 ## Parameters ##
 MAX_WORKERS = 3
-models = ["face_detection", "object_detection",]
-
-# A pre-recorded video - need to change this to something else if someone else is using it
-cap = cv2.VideoCapture("../../data/handGesture.avi")
-
-res_handler = ResultHandler(os.getpid(), models)
+# models = ["face_detection", "object_detection",]
+models = ["depth_estimation", "object_detection",]
+test_capture = "../../data/handGesture.avi" # A pre-recorded video - need to change this to something else if someone else is using it
 
 """
+DEV LOG
+
+Summary:
     Using ProcessPoolExecutor to submit asynchronously executions of tasks (initializer). Will set global flag if no globals are set.
     Then initialize the corresponding ModelProcessor based on global flag ONCE. Future calls to the target function will utilize the pre-initialize
     ModelProcessor to make inference in parallel.
 
     FutureObject encapsulates the asynchronous execution of a callable - returns a tuple if callable (initializer) is ran successfully without raising 
     an Exception.
+
+    iF FutureObject has no exception - pass results to ResultHandler to process results (image fusion, write file).
+
+TODO: 
+    - Queue implementation to put frames from video stream -> forward different frames to processors for faster computation;
+        currently handling frame one-by-one and not utilizing all available processors
+    - Compare FPS of: 
+        - parallel inference vs single inference without Queue
+        - parallel inference vs single inference with Queue
+        - resource utilization (CPU %)
+    - Integration of parallel inference to platform once finalize
 """
+cap = cv2.VideoCapture(test_capture)
+res_handler = ResultHandler(os.getpid(), models)
+
 logging.basicConfig(filename='exec.log', level=logging.DEBUG)
 with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
     while cap.isOpened():
@@ -181,14 +199,14 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor
         res = [executor.submit(initializer, (model, frame_org)) for model in models]
         for future in concurrent.futures.as_completed(res):
             if future.exception() is not None:
-                print("FutureObject exception encountered, saving to log..")
+                print("FutureObject exception encountered, saving exception to log..")
                 logging.exception(future.exception())
             # Save model output to model folder
-            # else:
-            #     future.add_done_callback(res_handler.handle)
+            else:
+                future.add_done_callback(res_handler.handle)
 
-        # Save outputs to fusion folder
-        res_handler.fusion(res)
+        # Uncomment below to save fusion models outputs to fused folder - currently does not support DE fusion due to output dimension mismatch
+        # res_handler.fusion(res)
 
     cap.release()
     time.sleep(5)
