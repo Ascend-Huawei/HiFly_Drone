@@ -23,10 +23,11 @@ sys.path.append("..")
 sys.path.append("../lib")
 
 from utils.params import params
-# from model_processors.IndoorDepthProcessor import ModelProcessor as DEModelProcessor
+from model_processors.IndoorDepthProcessor import ModelProcessor as DEModelProcessor
 from model_processors.ObjectDetectionProcessor import ModelProcessor as ODModelProcessor
 from model_processors.HandDetectionProcessor import ModelProcessor as HDModelProcessor
 from model_processors.FaceDetectionProcessor import ModelProcessor as FDModelProcessor
+
 
 
 """
@@ -56,8 +57,11 @@ def initializer(initargs):
         elif model_name == "face_detection":
             mp = FDModelProcessor(params["task"]["object_detection"]["face_detection"])
             logging.info(f"FaceDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
+        elif model_name == "depth_estimation":
+            mp = DEModelProcessor(params["task"]["depth_estimation"]["indoor_depth_estimation"])
+            logging.info(f"DepthEstimationMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
         else:
-            pass
+            raise Exception("ModelProcessor not initialized, model not supported")
         inited = True
     logging.info(f"MP {mp} already initialized in Processor {os.getpid()}, prepare for inferece...")
     assert mp is not None, f"ModuleProcessor on {os.getpid()} is None. Try again."
@@ -67,7 +71,6 @@ def initializer(initargs):
 class ResultHandler:
     """
     Accept parentID (MainProcessor iD) and models (list) and handles inference results
-    TODO: image fusion, pass onto PresenterServer
     """
     data_dir = "../../data/parallel"
     def __init__(self, parentID, models):
