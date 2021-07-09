@@ -43,9 +43,8 @@ class ModelProcessor(BaseProcessor):
         # Initialize Parent class BaseProcessor
         super().__init__(params)
         self._dvpp = Dvpp(self._acl_resource)
-        self._tmp_file = "../data/tmp.jpg"
+        self._tmp_file = "../../data/tmp.jpg"
         self._image_info = self.construct_image_info()
-        
 
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
@@ -58,13 +57,10 @@ class ModelProcessor(BaseProcessor):
         """preprocess frame from drone"""
         cv2.imwrite(self._tmp_file, frame)
         self._acl_image = AclImage(self._tmp_file)
-        # save as tmp jpg, read as ACLImage
         image_input = self._acl_image.copy_to_dvpp()
         yuv_image = self._dvpp.jpegd(image_input)
-        # print("decode jpeg end")
         resized_image = self._dvpp.crop_and_paste(yuv_image, self._acl_image.width, self._acl_image.height,\
             self._model_width, self._model_height)
-        # print("resize yuv end")
         return resized_image
 
     def postprocess(self, infer_output, origin_img):
@@ -75,19 +71,13 @@ class ModelProcessor(BaseProcessor):
         :param image_file   - image path
         returns mutated origin_img as output
         """
-        # print("post process")
-        # print(infer_output[1])
         box_num = infer_output[1][0, 0]
-        # print("box num ", box_num)
         box_info = infer_output[0].flatten()
-        # print ("\n")
-        # print(box_info[0:6 * box_num].reshape(6, box_num))
         scale = max(origin_img.shape[1] / self._model_width, origin_img.shape[0] / self._model_height)
         
         origin_img = Image.fromarray(origin_img)
         draw = ImageDraw.Draw(origin_img)
         font = ImageFont.load_default()
-        # print("======== inference results: =============")
         for n in range(int(box_num)):
             ids = int(box_info[5 * int(box_num) + n])
             label = labels[ids]
