@@ -51,12 +51,6 @@ class LiveRunner:
 
         self.engage_manual_control()
         
-        ###############################################################
-        ###### Unit Test for Distiller 
-        from .InferenceDistiller import InferenceDistiller
-        distiller = InferenceDistiller() 
-
-        ###############################################################
         print("\n############################################################")
         print("Fetching UAV Livestream...")
         while True:
@@ -65,9 +59,8 @@ class LiveRunner:
             assert frame_org is not None, "Error: Tello video capture failed, frame is None"
 
             ## Model Prediction ##
-            result_img, action = self.model_processor.predict(frame_org)
-            distilled_result = distiller.sample(action)
-            # enqueue result_img to WindowFilter - try thraeding and no threading implementation
+            result_img = self.model_processor.predict(frame_org)
+            # result_img, action = self.model_processor.predict(frame_org)
 
             """ Display inference results and send to presenter channel """
             _, jpeg_image = cv2.imencode('.jpg', result_img)

@@ -82,8 +82,6 @@ class ModelProcessor(BaseProcessor):
     def predict(self, frame):
         cv2.imwrite(self._tmp_file, frame)
         self._acl_image = AclImage(self._tmp_file)
-        # image = AclImage(image_file)
-        # resized_image = self.preprocess(image)
         resized_image = self.preprocess(self._acl_image)
         result = self.model.execute([resized_image,])
         result, action = self.postprocess(result, frame)
