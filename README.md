@@ -6,9 +6,9 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
 [Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
-[DJITelloPy](https://github.com/damiafuentes/DJITelloPy) - third party open-source Python interface built on top of the official Tello SDK<br>
 [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)<br>
-[HiFly Introduction YouTube Video 📹](https://youtu.be/zZQy9RBLlEo)<br>
+[📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
+[📓 HiFly Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)<br>
 
 
 ### Hardware Requirements
@@ -16,6 +16,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
 - Wireless Router (TP-Link TL-WR902AC)
 
+**For more information on contribution, upcoming changes, current issues and future directions, checkout the [HiFly Wiki page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)!**
 <hr>
 
 ## Table of Content
