@@ -1,3 +1,17 @@
+"""
+Closed-Loop Detection + Tracking System
+Control relies on feedback from in a closed-loop manner - enable drone to automatically adjust itself without user intervention to detect and track an
+object of interest
+
++ Visual Servoing with Robotics
++ Implementation of PID of object detection
+
+:class:
+    PIDController  - using proportional integral derivative to enable continuous modulated control
+        1. modify to return the coordinates of detected hand - assuming only 1 object-of-interest, we only grab the result from the bbox with highest confidence
+
+"""
+
 import concurrent.futures
 import time
 import sys
@@ -10,6 +24,8 @@ from abc import abstractmethod
 from djitellopy import Tello
 import pickle
 import argparse
+from DecisionFilter import DecisionFilter
+
 
 sys.path.append("..")
 sys.path.append("../lib")
@@ -18,35 +34,6 @@ from utils.uav_utils import connect_uav
 from utils.params import params
 from atlas_utils.presenteragent import presenter_channel
 from atlas_utils.acl_image import AclImage
-
-
-"""
-Closed-Loop Detection + Tracking System
-Control relies on feedback from in a closed-loop manner - enable drone to automatically adjust itself without user intervention to detect and track an
-object of interest
-
-+ Visual Servoing with Robotics
-+ Implementation of PID of object detection
-
-:class:
-    DetectorFactory - purely returns the detection results (feedback) given an input frame - swappable detection models
-                    - spawns different Detector class based on input parameter
-                    - based on params.py to return a fully initialized object
-    PIDController  - using proportional integral derivative to enable continuous modulated control
-        1. modify to return the coordinates of detected hand - assuming only 1 object-of-interest, we only grab the result from the bbox with highest confidence
-
-"""
-
-class DetectorFactory:
-    _detectors = params["task"]["object_detection"]
-
-    @classmethod
-    def from_model(cls, detection_model):
-        model_info = cls._detectors[detection_model]
-        processor = model_info["model_processor"]
-        MP = import_module(f"model_processors.{processor}")
-        MP = getattr(MP, "ModelProcessor")
-        return MP(model_info)
 
 """
 :class: TelloPIDController - Base class 
@@ -88,6 +75,17 @@ class TelloPIDController:
         MP = import_module(f"model_processors.{processor}")
         MP = getattr(MP, "ModelProcessor")
         return MP(model_info)
+    
+    @staticmethod
+    def _load_filter(Filter, **kwargs):
+        """Internal method to load Inference Filter
+        :param:
+            filter_name - a Filter Object (i.e. DecisionFilter)
+        Returns
+            an initialized Filter object
+        """
+        inference_filter = Filter(**kwargs)
+        return inference_filter
 
     def init_uav(self):
         """
@@ -104,7 +102,7 @@ class TelloPIDController:
             self.uav.streamon()
             self.uav.left_right_velocity = 0
             self.uav.forward_backward_velocity = 0
-            self.uav.up_down_velocity = 0
+            self.uav.up_down_velocity = 30
             self.uav.yaw_velocity = 0    
             return True
         except Exception as e:
@@ -141,6 +139,10 @@ class TelloPIDController:
     def track(self, inference_info):
         pass
 
+    @abstractmethod
+    def search(self):
+        pass
+
 class FaceTracker(TelloPIDController):
     def __init__(self, uav, pid):
         super().__init__(uav, pid)
@@ -155,6 +157,9 @@ class ObjectTracker(TelloPIDController):
     def __init__(self, pid):
         super().__init__(pid)
         self.model_processor = self._load_mp("yolov3")
+        self.inference_filter = self._load_filter(DecisionFilter, fps=5)
+        self.search_mode = True
+        self.track_mode = False
            
     def _unpack_feedback(self, infer_output, frame, toi="person"):
         """ Extract Process Variables from model's inference output info of input frame. The largest bbox of the same ToI label will be marked as ToI
@@ -231,10 +236,7 @@ class ObjectTracker(TelloPIDController):
         # CHECK: magnitude of bbox of person from drone's feed; then determine a better rom_fb
         print(f"BBox Area: {area}")
 
-        self.setpoint_area = [100000, 200000]  # lower and upper bound of Forward&Backward Range-of-Motion
-        self.rom_fb_sitting = [200000, 300000]  # lower and upper bound of Forward&Backward Range-of-Motion
-        # self.rom_yaw = []
-        # self.row_ud = []
+        self.setpoint_area = [150000, 200000]  # lower and upper bound of Forward&Backward Range-of-Motion    
 
         # Velocity signals to send to the drone
         forward_backward_velocity = 0
@@ -275,70 +277,72 @@ class ObjectTracker(TelloPIDController):
         }
         self.history.append(history)
 
-        """TODO: Save the process variable and errors to create a graph of the system
-        Graph - pv_bbox_area and pv_center from start untill system reached steady state superimposed by setpoint
-        2 Graphs: pv_bbox 2D plot; pv_center 3D plot
-        """
-
-
         """Actuator - adjust drone's motion to converge to setpoint"""
         self.uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
-        
-        # NOTE: not required to return x,y error for next step - x, y error can be obtained from inference center and setpoint
         return x_err, y_err
 
-    def track(self, frame, prev_x_err, prev_y_err, toi="person"):
+    """Uncomment to revert back to simplicit tracking"""
+    # def track(self, frame, prev_x_err, prev_y_err, toi="person"):
+    #     infer_output = self._get_feedback(frame)
+    #     result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
+    #     x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
+    #     return result_img, x_err, y_err
+
+    def _track(self, process_vars, prev_x_err, prev_y_err,):
+        # infer_output = self._get_feedback(frame)
+        # result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
+        x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
+        return x_err, y_err
+
+    def _search(self,):
+        """Send RC Controls to drone to try to find ToI"""
+        self.uav.send_rc_control(0,0,0,10)
+        return
+
+
+    def _manage_state(self, frame, toi="person"):
+        """State Manager
+        Infer surroundings to check if ToI is present, pass feedback to Filter to smooth out detection result. Break out of Search Mode 
+        and enter Track Mode if ToI is consistently present. Vice versa.
+        """
         infer_output = self._get_feedback(frame)
         result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
-        x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
-        return result_img, x_err, y_err
 
+        area, center = process_vars[0], process_vars[1]
 
+        sample_val = center if center is None else "Presence"
+        mode_inference = self.inference_filter.sample(sample_val)
+        if mode_inference is not None: 
+            # Consistently detected an object at x fps over the last y seconds - break out of search mode and enter tracking
+            self.track_mode = True
+            self.search_mode = False
 
+        if mode_inference is None:
+            self.track_mode = False
+            self.search_mode = True
 
-# pid = [0.2, 0.2, 0]
-# x_err, y_err = 0, 0
-# in_flight = False
-# test_run_end = False
-# timeout = time.time() + 30
-
-# obj_tracker = ObjectTracker(pid)
-# uav_inited = obj_tracker.init_uav()
-# if not uav_inited: 
-#     raise Exception("Tello not inited")
+        return result_img, process_vars
     
-# chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
-# if chan is None:
-#     raise Exception("Open presenter channel failed")
-
-# while not test_run_end:
-#     if not in_flight:
-#         in_flight = True
-#         obj_tracker.uav.takeoff()
+    def run_state_machine(self, frame, prev_x_err, prev_y_err):
+        result_img, process_vars = self._manage_state(frame)
+        if self.search_mode:
+            self._search()
+            return prev_x_err, prev_y_err
+        if self.track_mode:
+            x_err, y_err self._track(process_vars, prev_x_err, prev_y_err)
+            return x_err, y_err 
     
-#     frame_org = obj_tracker.fetch_frame()
-#     if frame_org is None: raise Exception("frame is none")
-#     result_img, x_err, y_err = obj_tracker.track(frame_org, x_err, y_err, "person")
-
-#     if time.time() > timeout:        
-#         test_run_end = True
-
-# obj_tracker.uav.land()
-
-# test_run = "001"
-# test_file = f"test_run/test_run_{test_run}.pkl"
-# with open(test_file, "wb") as test_run_data:
-#     pickle.dump(obj_tracker.history, test_run_data)
-
-# print(f"Test Run {test_run}: End")
+"""TODO: Test run_state_machine - see if it behaves as expected
+    + if drone can go into search and track mode as expected (no mode detection for 3s, go into search mode, do 360. Return to track mode if detected)
+    + if send_rc_control occupies main thread and affects detected logic
+    + **Replace run_state_machine with obj_tracker.track on line 385
+"""
 
 def get_latest_run(dir_name):
-    dir_list = os.listdir(dir_name)
-    
+    dir_list = os.listdir(dir_name) 
     fname = [int(filename.split(".")[0].split("_")[-1]) for filename in dir_list]
     fname.sort(key=lambda x: int(x))
     return fname[-1]
-
 
     
 if __name__ == "__main__":
@@ -357,6 +361,7 @@ if __name__ == "__main__":
     test_run_end = False
     timeout = time.time() + 60
 
+
     pid = [float(val) for val in args.pid]
     latest_run = str(args.rn)
 
@@ -365,10 +370,10 @@ if __name__ == "__main__":
     uav_inited = obj_tracker.init_uav()
     if not uav_inited: 
         raise Exception("Tello not inited")
-        
-    chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
-    if chan is None:
-        raise Exception("Open presenter channel failed")
+    
+    # chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
+    # if chan is None:
+        # raise Exception("Open presenter channel failed")
 
     while not test_run_end:
         if not in_flight:
@@ -377,12 +382,13 @@ if __name__ == "__main__":
         
         frame_org = obj_tracker.fetch_frame()
         if frame_org is None: raise Exception("frame is none")
-        result_img, x_err, y_err = obj_tracker.track(frame_org, x_err, y_err, "person")
+        result_img, x_err, y_err = obj_tracker.run_state_machine(frame_org, x_err, y_err, "person")
 
         if time.time() > timeout:        
             test_run_end = True
 
     obj_tracker.uav.land()
+    obj_tracker.uav.streamoff()
 
     test_run = str(latest_run)
     test_file = f"test_run/test_run_{test_run}.pkl"
@@ -390,3 +396,5 @@ if __name__ == "__main__":
         pickle.dump(obj_tracker.history, test_run_data)
 
     print(f"Test Run {test_run}: End")
+
+    sys.exit()
