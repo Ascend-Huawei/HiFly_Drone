@@ -16,7 +16,11 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
 - Wireless Router (TP-Link TL-WR902AC)
 
-**For more information on contribution, upcoming changes, current issues and future directions, checkout the [HiFly Wiki page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)!**
+**[HiFly Wiki](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)**
+- [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
+- [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
+- [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
+- [TP-Link-Wireless-Router-Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
 <hr>
 
 ## Table of Content
