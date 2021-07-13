@@ -20,7 +20,6 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
 - [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
 - [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
-- [TP-Link-Wireless-Router-Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
 <hr>
 
 ## Table of Content
