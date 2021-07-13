@@ -7,6 +7,9 @@ import logging
 import numpy as np
 from importlib import import_module
 from abc import abstractmethod
+from djitellopy import Tello
+import pickle
+import argparse
 
 sys.path.append("..")
 sys.path.append("../lib")
@@ -15,13 +18,6 @@ from utils.uav_utils import connect_uav
 from utils.params import params
 from atlas_utils.presenteragent import presenter_channel
 from atlas_utils.acl_image import AclImage
-
-
-## Parameters ##
-SRC_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRESENTER_SERVER_CONF = os.path.join(SRC_PATH, "uav_presenter_server.conf")
-prerecord = "../../data/handGesture.avi"
-
 
 
 """
@@ -78,8 +74,8 @@ class DetectorFactory:
 class TelloPIDController:
     detectors = params["task"]["object_detection"]
 
-    def __init__(self, pid,):
-        # self.uav = tello_uav
+    def __init__(self, pid):
+        # self.uav = uav
         self.pid = pid
         self.setpoint = None
         self.history = []
@@ -93,22 +89,28 @@ class TelloPIDController:
         MP = getattr(MP, "ModelProcessor")
         return MP(model_info)
 
-    def init_Tello(self):
+    def init_uav(self):
         """
         Initiate closed-loop tracking sequence, drone takeoff and parallelize streaming and control
         Returns
             None
         """
-        self.uav.left_right_velocity = 0
-        self.uav.forward_backward_velocity = 0
-        self.uav.up_down_velocity = 0
-        self.uav.yaw_velocity = 0
-        print(self.uav.get_battery())
-        self.uav.streamoff()
-        self.uav.streamon()
-        return True
+        try:
+            self.uav = Tello()
+            self.uav.connect()
+            print("UAV connected successfully!")
+            print(f"Current battery percentage: {self.uav.get_battery()}")
+            self.uav.streamoff()
+            self.uav.streamon()
+            self.uav.left_right_velocity = 0
+            self.uav.forward_backward_velocity = 0
+            self.uav.up_down_velocity = 0
+            self.uav.yaw_velocity = 0    
+            return True
+        except Exception as e:
+            raise Exception("Failed to connect to Tello UAV, please try to reconnect")
 
-    def fetch_frame(self, width, height):
+    def fetch_frame(self):
         frame = self.uav.get_frame_read().frame
         if self.setpoint is None:
             cx, cy = frame.shape[1] // 2, frame.shape[0] // 2
@@ -127,6 +129,9 @@ class TelloPIDController:
         preprocessed = self.model_processor.preprocess(frame)
         infer_output = self.model_processor.model.execute([preprocessed, self.model_processor._image_info])
         return infer_output
+    
+    def _pid(self, error, prev_error):
+        return self.pid[0]*error + self.pid[1]*(error-prev_error) + self.pid[2]*(error-prev_error)
 
     @abstractmethod
     def _unpack_feedback(self, inference_info, frame):
@@ -136,35 +141,21 @@ class TelloPIDController:
     def track(self, inference_info):
         pass
 
-
 class FaceTracker(TelloPIDController):
-    def __init__(self, pid):
-        super().__init__(pid)
+    def __init__(self, uav, pid):
+        super().__init__(uav, pid)
         self.model_processor = self._load_mp("face_detection")
 
 class HandTracker(TelloPIDController):
-    def __init__(self, pid):
-        super().__init__(pid)
+    def __init__(self, uav, pid):
+        super().__init__(uav, pid)
         self.model_processor = self._load_mp("hand_detection")
 
 class ObjectTracker(TelloPIDController):
     def __init__(self, pid):
         super().__init__(pid)
         self.model_processor = self._load_mp("yolov3")
-
-    def _get_feedback(self, frame):
-        """Obtains feedback (inference result) from model. 
-        Preprocess and execute the model using ModelProcessor.  
-        Parameter:
-            frame - input frame for inference
-        """
-        if self.setpoint is None:
-            cx, cy = frame.shape[1] // 2, frame.shape[0] // 2
-            self.setpoint = (cx, cy)
-        preprocessed = self.model_processor.preprocess(frame)
-        infer_output = self.model_processor.model.execute([preprocessed, self.model_processor._image_info])
-        return infer_output
-        
+           
     def _unpack_feedback(self, infer_output, frame, toi="person"):
         """ Extract Process Variables from model's inference output info of input frame. The largest bbox of the same ToI label will be marked as ToI
         Parameter:
@@ -208,7 +199,7 @@ class ObjectTracker(TelloPIDController):
         
         return frame, (process_var_bbox_area, process_var_bbox_center)
 
-    def _pid_controller(self, uav, process_vars, prev_x_err, prev_y_err):
+    def _pid_controller(self, process_vars, prev_x_err, prev_y_err):
         """Closed-Loop PID ObjTracker (Compensator + Actuator)
         Error is xy error between frame center and process_var_bbox_center
         
@@ -225,17 +216,26 @@ class ObjectTracker(TelloPIDController):
         """
         area = process_vars[0]
         center = process_vars[1]
+        print(f"Area: {area}")
+        print(f"Center: {center}")
+
+        # Catch no detection case: Area = 0, Center = None
+        if area == 0 and center is None:
+            return prev_x_err, prev_y_err
         
         x_err = process_vars[1][0] - self.setpoint[0]       # rotational err
         y_err = process_vars[1][1] - self.setpoint[1]       # elevation err
 
         # CHECK: magnitude of x_err and y_err; then determine an appropriate range to adjust
-        print(x_err, y_err)
+        print(f"\nXY error: {x_err}, {y_err}")
         # CHECK: magnitude of bbox of person from drone's feed; then determine a better rom_fb
-        print(area)
+        print(f"BBox Area: {area}")
 
-        self.rom_fb = [10000, 17000]  # lower and upper bound of Forward&Backward Range-of-Motion
-        
+        self.setpoint_area = [100000, 200000]  # lower and upper bound of Forward&Backward Range-of-Motion
+        self.rom_fb_sitting = [200000, 300000]  # lower and upper bound of Forward&Backward Range-of-Motion
+        # self.rom_yaw = []
+        # self.row_ud = []
+
         # Velocity signals to send to the drone
         forward_backward_velocity = 0
         left_right_velocity = 0
@@ -243,82 +243,150 @@ class ObjectTracker(TelloPIDController):
         yaw_velocity = 0
 
         """Compensator: calcuate the amount adjustment needed"""
-    
         # Localization of ToI to the center - adjusts angle
         if x_err != 0:
-            yaw_velocity = pid[0]*x_err + pid[1]*(x_err - prev_x_err)
+            # yaw_velocity = pid[0]*x_err + pid[1]*(x_err - prev_x_err)
+            yaw_velocity = self._pid(x_err, prev_x_err)
             yaw_velocity = int(np.clip(yaw_velocity, -100, 100))
+            print(f"YAW Velocity: {yaw_velocity}")
 
         # Localization of ToI to be at eye level - adjust altitude 
-        if y_err not in range(-10, 10):
-            up_down_velocity = pid[0]y_err + pid[1]*(y_err - prev_y_err)
-            up_down_velocity = int(np.clip(up_down_velocity, -100, 100))
+        # if y_err != 0:
+        #     up_down_velocity = self._pid(y_err, prev_y_err)
+        #     up_down_velocity = int(np.clip(up_down_velocity, -100, 100))
 
         # Stablization: forward and backward motion
-        if area > self.rom_fb[0] and area < self.rom_fb[1]:
+        if area > self.setpoint_area[0] and area < self.setpoint_area[1]:
             forward_backward_velocity = 0
-        elif area < self.rom_fb[0]:
+        elif area < self.setpoint_area[0]:
             forward_backward_velocity = 20
-        elif area > self.rom_fb[1]:
+        elif area > self.setpoint_area[1]:
             forward_backward_velocity = -20
 
-        """Actuator - adjust drone's motion to converge to setpoint"""
-        uav.send_rc_control(forward_backward_velocity, left_right_velocity, up_down_velocity, yaw_velocity)
-
         history = {
-            "forward_backward_velocity": forward_backward_velocity, 
             "left_right_velocity": left_right_velocity,
+            "forward_backward_velocity": forward_backward_velocity, 
             "up_down_velocity": up_down_velocity,
             "yaw_velocity": yaw_velocity,
             "x_err": x_err,
-            "y_err": y_err
+            "y_err": y_err,
+            "pv_bbox_area": area,
+            "pv_center": center
         }
         self.history.append(history)
 
+        """TODO: Save the process variable and errors to create a graph of the system
+        Graph - pv_bbox_area and pv_center from start untill system reached steady state superimposed by setpoint
+        2 Graphs: pv_bbox 2D plot; pv_center 3D plot
+        """
+
+
+        """Actuator - adjust drone's motion to converge to setpoint"""
+        self.uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
+        
         # NOTE: not required to return x,y error for next step - x, y error can be obtained from inference center and setpoint
         return x_err, y_err
 
-        def track(self, uav, frame, prev_x_err, prev_y_err, toi="person"):
-            infer_output = self._get_feedback(frame,)
-            result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
-            x_err, y_err = self._pid_controller(uav, process_vars, prev_x_err, prev_y_err)
+    def track(self, frame, prev_x_err, prev_y_err, toi="person"):
+        infer_output = self._get_feedback(frame)
+        result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
+        x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
+        return result_img, x_err, y_err
+
+
+
+
+# pid = [0.2, 0.2, 0]
+# x_err, y_err = 0, 0
+# in_flight = False
+# test_run_end = False
+# timeout = time.time() + 30
+
+# obj_tracker = ObjectTracker(pid)
+# uav_inited = obj_tracker.init_uav()
+# if not uav_inited: 
+#     raise Exception("Tello not inited")
+    
+# chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
+# if chan is None:
+#     raise Exception("Open presenter channel failed")
+
+# while not test_run_end:
+#     if not in_flight:
+#         in_flight = True
+#         obj_tracker.uav.takeoff()
+    
+#     frame_org = obj_tracker.fetch_frame()
+#     if frame_org is None: raise Exception("frame is none")
+#     result_img, x_err, y_err = obj_tracker.track(frame_org, x_err, y_err, "person")
+
+#     if time.time() > timeout:        
+#         test_run_end = True
+
+# obj_tracker.uav.land()
+
+# test_run = "001"
+# test_file = f"test_run/test_run_{test_run}.pkl"
+# with open(test_file, "wb") as test_run_data:
+#     pickle.dump(obj_tracker.history, test_run_data)
+
+# print(f"Test Run {test_run}: End")
+
+def get_latest_run(dir_name):
+    dir_list = os.listdir(dir_name)
+    
+    fname = [int(filename.split(".")[0].split("_")[-1]) for filename in dir_list]
+    fname.sort(key=lambda x: int(x))
+    return fname[-1]
+
 
     
+if __name__ == "__main__":
+    latest_run = get_latest_run("test_run") + 1
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pid", nargs="+", help="PID List", required=True)
+    parser.add_argument("--rn", help="Test run name", default=latest_run)
+    args = parser.parse_args()
 
-pid = [0.4, 0.4, 0] 
-obj_tracker = ObjectTracker(pid)
+    ## Fixed Parameters ##
+    SRC_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PRESENTER_SERVER_CONF = os.path.join(SRC_PATH, "uav_presenter_server.conf")
+    x_err, y_err = 0, 0
+    in_flight = False
+    test_run_end = False
+    timeout = time.time() + 60
 
-cap = cv2.VideoCapture(prerecord)
+    pid = [float(val) for val in args.pid]
+    latest_run = str(args.rn)
 
-chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
-if chan is None:
-    raise Exception("Open presenter channel failed")
-    
-while cap.isOpened():
-    _, frame_org = cap.read()
-    cv2.waitKey(10)
-    if frame_org is None: break
+    # Initialize Classes - ObjectTracker, PresenterChannel
+    obj_tracker = ObjectTracker(pid)
+    uav_inited = obj_tracker.init_uav()
+    if not uav_inited: 
+        raise Exception("Tello not inited")
+        
+    chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
+    if chan is None:
+        raise Exception("Open presenter channel failed")
 
-    result_img, process_vars = obj_tracker.track(frame_org)
-    print(process_vars)
+    while not test_run_end:
+        if not in_flight:
+            in_flight = True
+            obj_tracker.uav.takeoff()
+        
+        frame_org = obj_tracker.fetch_frame()
+        if frame_org is None: raise Exception("frame is none")
+        result_img, x_err, y_err = obj_tracker.track(frame_org, x_err, y_err, "person")
 
-    _, jpeg_image = cv2.imencode('.jpg', result_img)
-    jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
-    chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
+        if time.time() > timeout:        
+            test_run_end = True
 
-cap.release()
+    obj_tracker.uav.land()
 
-# Isolate - test single image
+    test_run = str(latest_run)
+    test_file = f"test_run/test_run_{test_run}.pkl"
+    with open(test_file, "wb") as test_run_data:
+        pickle.dump(obj_tracker.history, test_run_data)
 
-
-
-# For drone stream
-# while True:
-#     frame_org = uav.get_frame_read().frame
-#     result_img = ModelProcessor.predict(frame_org)
-
-#     """ Display inference results and send to presenter channel """
-#     _, jpeg_image = cv2.imencode('.jpg', result_img)
-#     jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
-#     chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
+    print(f"Test Run {test_run}: End")
