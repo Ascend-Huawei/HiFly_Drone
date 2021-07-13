@@ -6,7 +6,6 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
 [Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
-[TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)<br>
 [📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
 [📓 HiFly Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)<br>
 
@@ -20,6 +19,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
 - [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
 - [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
+- [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
 <hr>
 
 ## Table of Content
