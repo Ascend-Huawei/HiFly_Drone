@@ -8,12 +8,10 @@ Navie implementation:
 3. Result fusion and send to presenter server
 """
 import concurrent.futures
-from multiprocessing import Process, Queue, Pool
 import time
 import sys
 import os
 import cv2
-from functools import partial
 import logging
 import numpy as np
 from PIL import Image
@@ -159,7 +157,7 @@ def kill_all(e):
 
 
 ## Parameters ##
-MAX_WORKERS = 3
+MAX_WORKERS = 6 
 models = ["face_detection", "object_detection",]
 # models = ["depth_estimation", "object_detection",]
 test_capture = "../../data/handGesture.avi" # A pre-recorded video - need to change this to something else if someone else is using it
@@ -201,12 +199,12 @@ logging.basicConfig(filename='exec.log', level=logging.DEBUG)
 with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
     while cap.isOpened():
         _, frame_org = cap.read()
+        cv2.waitKey(10)
         if frame_org is None:
             print("VideoCapture frame is None. Releasing VidCap and killing all processors in pool...")
             break
         args = ((model, frame_org) for model in models)
 
-        # Works
         res = [executor.submit(initializer, (model, frame_org)) for model in models]
         for future in concurrent.futures.as_completed(res):
             if future.exception() is not None:
