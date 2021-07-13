@@ -34,6 +34,7 @@ class DecisionFilter:
     def sample(self, result):
         if not self.q.full():
             self._enqueue(result)
+            return "MODE_INFERENCE_SAMPLING"
         else:
             # get the mode result, then release
             self.mode_inference = self._release()

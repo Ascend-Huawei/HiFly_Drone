@@ -24,7 +24,10 @@ from abc import abstractmethod
 from djitellopy import Tello
 import pickle
 import argparse
+import logging
+
 from DecisionFilter import DecisionFilter
+
 
 
 sys.path.append("..")
@@ -281,24 +284,22 @@ class ObjectTracker(TelloPIDController):
         self.uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
         return x_err, y_err
 
-    """Uncomment to revert back to simplicit tracking"""
-    # def track(self, frame, prev_x_err, prev_y_err, toi="person"):
-    #     infer_output = self._get_feedback(frame)
-    #     result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
-    #     x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
-    #     return result_img, x_err, y_err
+    # """Uncomment to revert back to simplicit tracking"""
+    # # def track(self, frame, prev_x_err, prev_y_err, toi="person"):
+    # #     infer_output = self._get_feedback(frame)
+    # #     result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
+    # #     x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
+    # #     return result_img, x_err, y_err
 
-    def _track(self, process_vars, prev_x_err, prev_y_err,):
-        # infer_output = self._get_feedback(frame)
-        # result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
+    def _track(self, process_vars, prev_x_err, prev_y_err):
+        print("TRACK MODE")
         x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
         return x_err, y_err
 
     def _search(self,):
         """Send RC Controls to drone to try to find ToI"""
-        self.uav.send_rc_control(0,0,0,10)
+        self.uav.send_rc_control(0,0,0,40)
         return
-
 
     def _manage_state(self, frame, toi="person"):
         """State Manager
@@ -312,14 +313,17 @@ class ObjectTracker(TelloPIDController):
 
         sample_val = center if center is None else "Presence"
         mode_inference = self.inference_filter.sample(sample_val)
-        if mode_inference is not None: 
-            # Consistently detected an object at x fps over the last y seconds - break out of search mode and enter tracking
+        if mode_inference == "MDOE_INFERENCE_SAMPLING":
+            pass
+        elif mode_inference == "Presence": 
             self.track_mode = True
             self.search_mode = False
-
-        if mode_inference is None:
+        elif mode_inference is None:
             self.track_mode = False
             self.search_mode = True
+        
+        print(f"mode_inference = {mode_inference}")
+        print(f"Search Mode: {self.search_mode}; Track Mode: {self.track_mode}")
 
         return result_img, process_vars
     
@@ -329,13 +333,17 @@ class ObjectTracker(TelloPIDController):
             self._search()
             return prev_x_err, prev_y_err
         if self.track_mode:
-            x_err, y_err self._track(process_vars, prev_x_err, prev_y_err)
+            x_err, y_err = self._track(process_vars, prev_x_err, prev_y_err)
             return x_err, y_err 
     
 """TODO: Test run_state_machine - see if it behaves as expected
     + if drone can go into search and track mode as expected (no mode detection for 3s, go into search mode, do 360. Return to track mode if detected)
-    + if send_rc_control occupies main thread and affects detected logic
-    + **Replace run_state_machine with obj_tracker.track on line 385
+    + Check if send_rc_control occupies main thread and affects detected logic
+    + Problem - track mode does not persist - RESOLVED
+        Batch dequeue - majority presence -> track_mode = True -> do tracking -> run _manage_state again -> queue sample, return None 
+        DecisionFilter logic problem - mode_inference is almost always None when sampling even when detected
+    + Problem - Consider case when 15 inference queue results in total - 9=None, 6=Presence, what do you do then?
+    + Problem - Latency problem, drone sometimes become irresponsive  
 """
 
 def get_latest_run(dir_name):
@@ -346,6 +354,7 @@ def get_latest_run(dir_name):
 
     
 if __name__ == "__main__":
+    logging.basicConfig(filename='run.log', level=logging.DEBUG)
     latest_run = get_latest_run("test_run") + 1
 
     parser = argparse.ArgumentParser()
@@ -382,7 +391,8 @@ if __name__ == "__main__":
         
         frame_org = obj_tracker.fetch_frame()
         if frame_org is None: raise Exception("frame is none")
-        result_img, x_err, y_err = obj_tracker.run_state_machine(frame_org, x_err, y_err, "person")
+
+        x_err, y_err = obj_tracker.run_state_machine(frame_org, x_err, y_err)
 
         if time.time() > timeout:        
             test_run_end = True
