@@ -13,6 +13,7 @@ limitations under the License.
 """
 
 import cv2
+import os
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -59,6 +60,12 @@ class ModelProcessor(BaseProcessor):
         final = cv2.resize(final.squeeze(), (self.iw, self.ih), interpolation = cv2.INTER_AREA)
 
         # TODO: find better way instead of save & load
-        plt.imsave("tmp.jpg", final)
-        return cv2.imread("tmp.jpg")
+        # matplotlib 默认的十色环：”C0”, “C1”, ……，”C9”
+        parent_id = os.getppid()
+        d = f"tmp/{parent_id}"
+        if not os.path.exists(d):
+            os.makedirs(d)
+        filename = f"tmp/{parent_id}/tmp_{os.getpid()}.jpg"
+        plt.imsave(filename, final)
+        return cv2.imread(filename)
   
