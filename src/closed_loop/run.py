@@ -12,19 +12,16 @@ object of interest
 
 """
 
-import concurrent.futures
 import time
 import sys
 import os
 import cv2
-import logging
 import numpy as np
 from importlib import import_module
 from abc import abstractmethod
 from djitellopy import Tello
 import pickle
 import argparse
-import logging
 
 from DecisionFilter import DecisionFilter
 
@@ -40,10 +37,9 @@ from atlas_utils.acl_image import AclImage
 
 """
 :class: TelloPIDController - Base class 
-    Has: Compensator, Setpoint, Actuator and Process Variable
+    Has Compensator, Setpoint, Actuator and Process Variable. Initializes a Tello UAV object
     :input:
-        + uav Obejct - for drone interaction 
-        + detector ModelProcessor Object - for inference feedback 
+        + PID
     
     :components:
         + bbox_compensator - internal method for calculating distance b/w detected bbox of ToI and central point
@@ -51,8 +47,6 @@ from atlas_utils.acl_image import AclImage
         + Actuator         - internal method to stabilize droen and track ToI based on bbox_compensator's output
                         I.e.: compensator says bbox is far to the right, actuator rotate camera to the right to adjust
 
-        + how frequent? 
-        + stream on another thread?
         + Accepts a connected TelloUAV - takeoff and streamon;
             - once stream is stablized run OD, 
 
@@ -65,14 +59,18 @@ class TelloPIDController:
     detectors = params["task"]["object_detection"]
 
     def __init__(self, pid):
-        # self.uav = uav
         self.pid = pid
         self.setpoint = None
         self.history = []
 
     @staticmethod
     def _load_mp(detector_name):
-        """Internal method for children class to load predestined MP"""
+        """Internal method for children class to load specified MP
+        :param:
+            + detector_name - Key name of detection model
+        Returns
+            A fully initialized ModelProcessor object
+        """
         model_info = TelloPIDController.detectors[detector_name]
         processor = model_info["model_processor"]
         MP = import_module(f"model_processors.{processor}")
@@ -119,10 +117,11 @@ class TelloPIDController:
         return frame
 
     def _get_feedback(self, frame):
-        """Obtains feedback (inference result) from model. 
-        Preprocess and execute the model using ModelProcessor.  
-        Parameter:
-            frame - input frame for inference
+        """Obtains feedback (inference result) from model. Preprocess and execute the model using ModelProcessor.  
+        :param:
+            + frame - input frame for inference
+        Returns
+            Model's inference output (i.e: a list containing inference information such as bbox, num_detections, etc.)
         """
         if self.setpoint is None:
             cx, cy = frame.shape[1] // 2, frame.shape[0] // 2
@@ -132,6 +131,7 @@ class TelloPIDController:
         return infer_output
     
     def _pid(self, error, prev_error):
+        """PID Output signal equation"""
         return self.pid[0]*error + self.pid[1]*(error-prev_error) + self.pid[2]*(error-prev_error)
 
     @abstractmethod
@@ -139,22 +139,13 @@ class TelloPIDController:
         pass
 
     @abstractmethod
-    def track(self, inference_info):
+    def _track(self, inference_info):
         pass
 
     @abstractmethod
-    def search(self):
+    def _search(self):
         pass
 
-class FaceTracker(TelloPIDController):
-    def __init__(self, uav, pid):
-        super().__init__(uav, pid)
-        self.model_processor = self._load_mp("face_detection")
-
-class HandTracker(TelloPIDController):
-    def __init__(self, uav, pid):
-        super().__init__(uav, pid)
-        self.model_processor = self._load_mp("hand_detection")
 
 class ObjectTracker(TelloPIDController):
     def __init__(self, pid):
@@ -166,9 +157,9 @@ class ObjectTracker(TelloPIDController):
            
     def _unpack_feedback(self, infer_output, frame, toi="person"):
         """ Extract Process Variables from model's inference output info of input frame. The largest bbox of the same ToI label will be marked as ToI
-        Parameter:
+        :params:
             infer_output - model's inference result from executing model on a frame
-            frame        - input frame for inference  
+            frame        - input frame for inference
             toi          - Target-of-Interest 
         Returns
             process_var_center  - Process Variable - ToI's bbox center
@@ -208,40 +199,39 @@ class ObjectTracker(TelloPIDController):
         return frame, (process_var_bbox_area, process_var_bbox_center)
 
     def _pid_controller(self, process_vars, prev_x_err, prev_y_err):
-        """Closed-Loop PID ObjTracker (Compensator + Actuator)
-        Error is xy error between frame center and process_var_bbox_center
-        
-        Calculates the Error value from Process variables and compute the require adjustment for the drone 
+        """Closed-Loop PID Object Tracker (Compensator + Actuator)
+        Calculates the Error value from Process variables and compute the require adjustment for the drone. 
+        XY error is error between setpoint (frame center) and process_var_bbox_center
         Process Variable Area - for calculating the distance between drone and ToI (if it is over 80% of frame, then drone needs to move back)
                     Info obtained from inference bbox
                     + forward and backward motion of drone
         Process Variable center - for calculating how much to adjust the camera angle and altitude of drone
                     x_err: angle rotation
                     y_err: elevation to eye-level
-        
-        Analysis 1: 
-            Drone video stream input frame = ()
+        :params:
+            + process_vars - Tuple(process variables bbox area and process variable bbox center)
+            + prev_x_err   - x error from previous control loop
+            + prev_y_err   - y error from previous control loop
+        Returns
+            x_err, y_err   - current control loop error 
         """
         area = process_vars[0]
         center = process_vars[1]
         print(f"Area: {area}")
         print(f"Center: {center}")
 
-        # Catch no detection case: Area = 0, Center = None
         if area == 0 and center is None:
             return prev_x_err, prev_y_err
         
         x_err = process_vars[1][0] - self.setpoint[0]       # rotational err
         y_err = process_vars[1][1] - self.setpoint[1]       # elevation err
 
-        # CHECK: magnitude of x_err and y_err; then determine an appropriate range to adjust
         print(f"\nXY error: {x_err}, {y_err}")
-        # CHECK: magnitude of bbox of person from drone's feed; then determine a better rom_fb
         print(f"BBox Area: {area}")
 
-        self.setpoint_area = [150000, 200000]  # lower and upper bound of Forward&Backward Range-of-Motion    
+        self.setpoint_area = [150000, 200000]  # lower and upper bound for Forward&Backward Range-of-Motion    
 
-        # Velocity signals to send to the drone
+        # Velocity signals for the drone
         forward_backward_velocity = 0
         left_right_velocity = 0
         up_down_velocity = 0
@@ -292,7 +282,6 @@ class ObjectTracker(TelloPIDController):
     # #     return result_img, x_err, y_err
 
     def _track(self, process_vars, prev_x_err, prev_y_err):
-        print("TRACK MODE")
         x_err, y_err = self._pid_controller(process_vars, prev_x_err, prev_y_err)
         return x_err, y_err
 
@@ -305,6 +294,12 @@ class ObjectTracker(TelloPIDController):
         """State Manager
         Infer surroundings to check if ToI is present, pass feedback to Filter to smooth out detection result. Break out of Search Mode 
         and enter Track Mode if ToI is consistently present. Vice versa.
+        :params:
+            + frame     - input frame from video stream
+            + toi       - Target-of-Interest, defaults to Person for Person detection
+        Returns
+            result_img   - inference result superimposed on frame
+            process_vars - Tuple() of process variables
         """
         infer_output = self._get_feedback(frame)
         result_img, process_vars = self._unpack_feedback(infer_output, frame, toi)
@@ -336,17 +331,8 @@ class ObjectTracker(TelloPIDController):
             x_err, y_err = self._track(process_vars, prev_x_err, prev_y_err)
             return x_err, y_err 
     
-"""TODO: Test run_state_machine - see if it behaves as expected
-    + if drone can go into search and track mode as expected (no mode detection for 3s, go into search mode, do 360. Return to track mode if detected)
-    + Check if send_rc_control occupies main thread and affects detected logic
-    + Problem - track mode does not persist - RESOLVED
-        Batch dequeue - majority presence -> track_mode = True -> do tracking -> run _manage_state again -> queue sample, return None 
-        DecisionFilter logic problem - mode_inference is almost always None when sampling even when detected
-    + Problem - Consider case when 15 inference queue results in total - 9=None, 6=Presence, what do you do then?
-    + Problem - Latency problem, drone sometimes become irresponsive  
-"""
-
 def get_latest_run(dir_name):
+    """Utility function to get the most updated run for experimental analysis"""
     dir_list = os.listdir(dir_name) 
     fname = [int(filename.split(".")[0].split("_")[-1]) for filename in dir_list]
     fname.sort(key=lambda x: int(x))
@@ -354,7 +340,6 @@ def get_latest_run(dir_name):
 
     
 if __name__ == "__main__":
-    logging.basicConfig(filename='run.log', level=logging.DEBUG)
     latest_run = get_latest_run("test_run") + 1
 
     parser = argparse.ArgumentParser()
@@ -374,7 +359,6 @@ if __name__ == "__main__":
     pid = [float(val) for val in args.pid]
     latest_run = str(args.rn)
 
-    # Initialize Classes - ObjectTracker, PresenterChannel
     obj_tracker = ObjectTracker(pid)
     uav_inited = obj_tracker.init_uav()
     if not uav_inited: 
