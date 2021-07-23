@@ -274,7 +274,7 @@ class FaceTracker(TelloPIDController):
 
     def _search(self,):
         """Send RC Controls to drone to try to find ToI"""
-        self.uav.send_rc_control(0,0,0,40)
+        self.uav.send_rc_control(0,0,0,20)
         return
 
     def _manage_state(self, frame):
@@ -367,6 +367,7 @@ if __name__ == "__main__":
             if not in_flight:
                 in_flight = True
                 face_tracker.uav.takeoff()
+                face_tracker.uav.move_up(90)
             
             if time.time() > timeout:        
                 face_tracker.uav.land()
@@ -379,11 +380,11 @@ if __name__ == "__main__":
 
             x_err, y_err, result_img = face_tracker.run_state_machine(frame_org, x_err, y_err)
 
-            # _, jpeg_image = cv2.imencode('.jpg', result_img)
-            # jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
-            # chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
+            _, jpeg_image = cv2.imencode('.jpg', result_img)
+            jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
+            chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
 
-        except KeyboardInterrupt, Exception:
+        except (KeyboardInterrupt, Exception):
             face_tracker.uav.land()
             face_tracker.uav.streamoff()
 

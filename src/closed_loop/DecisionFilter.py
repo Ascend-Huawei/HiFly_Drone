@@ -56,7 +56,11 @@ class DecisionFilter:
 
     def _release(self):
         """Release elements in the queue and get the key from inference_tracker with the highest value"""
-        distilled_result = max(self.inference_tracker, key=self.inference_tracker.get)
+        # distilled_result = max(self.inference_tracker, key=self.inference_tracker.get)
+        distilled_result = None
+        if "Presence" in self.inference_tracker and (self.inference_tracker["Presence"] / self.max_qsize) >= 0.6:
+            distilled_result = "Presence"
+        
         print("Release: ", self.inference_tracker)
         print("Max queue size reached, release elements in queue for next batch, reset hash table...")
         with self.q.mutex:
