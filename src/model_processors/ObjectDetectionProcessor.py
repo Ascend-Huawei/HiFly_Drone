@@ -39,18 +39,35 @@ labels = ["person",
         "scissors", "teddy bear", "hair drier", "toothbrush"]
 
 class ModelProcessor(BaseProcessor):
+    
+    labels = ["person",
+        "bicycle", "car", "motorbike", "aeroplane",
+        "bus", "train", "truck", "boat", "traffic light",
+        "fire hydrant", "stop sign", "parking meter", "bench",
+        "bird", "cat", "dog", "horse", "sheep", "cow", "elephant",
+        "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag",
+        "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+        "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+        "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon",
+        "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog",
+        "pizza", "donut", "cake", "chair", "sofa", "potted plant", "bed", "dining table",
+        "toilet", "TV monitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
+        "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
+        "scissors", "teddy bear", "hair drier", "toothbrush"]
+
+
     def __init__(self, params):
         # Initialize Parent class BaseProcessor
         super().__init__(params)
         self._dvpp = Dvpp(self._acl_resource)
-        self._tmp_file = "../data/tmp.jpg"
+        self._tmp_file = "../../data/tmp.jpg"
         self._image_info = self.construct_image_info()
         
 
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
-        result = self.model.execute([preprocessed, self._image_info])
-        result = self.postprocess(result, frame)
+        infer_output = self.model.execute([preprocessed, self._image_info])
+        result = self.postprocess(infer_output, frame)
         return result
 
 
@@ -58,13 +75,10 @@ class ModelProcessor(BaseProcessor):
         """preprocess frame from drone"""
         cv2.imwrite(self._tmp_file, frame)
         self._acl_image = AclImage(self._tmp_file)
-        # save as tmp jpg, read as ACLImage
         image_input = self._acl_image.copy_to_dvpp()
         yuv_image = self._dvpp.jpegd(image_input)
-        # print("decode jpeg end")
         resized_image = self._dvpp.crop_and_paste(yuv_image, self._acl_image.width, self._acl_image.height,\
             self._model_width, self._model_height)
-        # print("resize yuv end")
         return resized_image
 
     def postprocess(self, infer_output, origin_img):
