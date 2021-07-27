@@ -67,5 +67,9 @@ class DecisionFilter:
             self.q.queue.clear()
         self.inference_tracker = dict()
         return distilled_result
+    
+    def __repr__(self):
+        return f"DecisionFilter(fps={self.fps}, window={self.window})"
+
 
     

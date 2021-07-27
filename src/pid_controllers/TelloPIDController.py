@@ -9,12 +9,9 @@ from djitellopy import Tello
 import pickle
 import argparse
 
-from DecisionFilter import DecisionFilter
-
 sys.path.append("..")
 sys.path.append("../lib")
 
-from utils.uav_utils import connect_uav 
 from utils.params import params
 from atlas_utils.presenteragent import presenter_channel
 from atlas_utils.acl_image import AclImage
@@ -121,7 +118,7 @@ class TelloPIDController:
     
     def save_hist(self, run_name):
         # run_name = str(run_name) if not isintance(run_name, str) else run_name
-        filepath = f"saved_flights/{run_name}.pkl"
+        filepath = f"flights_data/{run_name}.pkl"
         with open(filepath, "wb") as f:
             pickle.dump(self.history, f)
             print(f"Flight {run_name} saved")

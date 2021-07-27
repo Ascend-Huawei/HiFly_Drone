@@ -4,13 +4,11 @@ import numpy as np
 
 sys.path.append("..")
 
-from utils.uav_utils import connect_uav 
-from utils.params import params
-from DecisionFilter import DecisionFilter
+from inference_filters.DecisionFilter import DecisionFilter
 from model_processors.FaceDetectionProcessor import sigmoid, yolo_head, yolo_correct_boxes, yolo_boxes_and_scores, nms, yolo_eval, get_box_img
 from TelloPIDController import TelloPIDController
 
-class PIDTracker(TelloPIDController):
+class PIDFaceTracker(TelloPIDController):
     """
     Closed-Loop Face Detection + Tracking System
     Control relies on feedback from in a closed-loop manner - enable drone to automatically adjust itself without user intervention to detect and track a 
@@ -23,17 +21,17 @@ class PIDTracker(TelloPIDController):
         + inference_filter  - Class:Filter; Inference result filter to smooth the model's inference results
         + if_fps            - Int; Argument for inference_filter class, rate of incomimg frames
         + if_window         - Int; Argument for inference_filter class, period of observation (in seconds) 
-        + model_processor   - Str; Name of the face detection model to be used as the backbone of feedback, refer to params.py
         + save_flight_hist  - Bool; Save flight statistics if True
     Returns
         None  
     """
-    def __init__(self, pid, inference_filter=DecisionFilter, if_fps=7, if_window=3, model_processor="face_detection", save_flight_hist=False):
+    def __init__(self, pid, inference_filter=DecisionFilter, save_flight_hist=False):
         super().__init__(pid, save_flight_hist)
-        self.model_processor = self._load_mp(model_processor)
-        self.inference_filter = self._load_filter(inference_filter, fps=if_fps, window=if_window)   # Uses DecisionFilter to smooth inference results every 3 seconds at a rate of 7fps
-        self.setpoint_area = (20000, 100000)    # Lower and Upper bound for Forward&Backward Range-of-Motion - can be adjusted    
-        self.setpoint_center = (480, 360)       # Central coordinates for Tello incoming frames - fixed
+        self.model_processor = self._load_mp("face_detection")
+        # self.inference_filter = self._load_filter(inference_filter, fps=if_fps, window=if_window)   # Uses DecisionFilter to smooth inference results every 3 seconds at a rate of 7fps
+        self.inference_filter = inference_filter    # A fully instantiated InferenceFilter object  
+        self.setpoint_area = (20000, 100000)        # Lower and Upper bound for Forward&Backward Range-of-Motion - can be adjusted    
+        self.setpoint_center = (480, 360)           # Central coordinates for Tello incoming frames - fixed
         self.save_flight_hist = save_flight_hist
         # Instance mode for managing state machine
         self.search_mode = True
@@ -200,3 +198,5 @@ class PIDTracker(TelloPIDController):
             x_err, y_err = self._track(process_vars, prev_x_err, prev_y_err)
             return x_err, y_err, result_img
     
+    def __repr__(self):
+        return f"PIDFaceTracker(pid={self.pid}, inference_filter={self.inference_filter})"
