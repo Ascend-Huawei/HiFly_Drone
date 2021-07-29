@@ -14,11 +14,8 @@ import time
 import sys
 import os
 import cv2
-from functools import partial
 import logging
 import numpy as np
-from PIL import Image
-
 
 sys.path.append("..")
 sys.path.append("../lib")
@@ -41,10 +38,8 @@ from atlas_utils.acl_image import AclImage
 
 """
 class MultiProcessManager(object):
-    def __init__(self, num_infer_processes=1, input_q_size=10) -> None:
+    def __init__(self, num_infer_processes=1, feed_fps=15) -> None:
         super().__init__()
-        self.encode_with_infer_process = True
-        
         
         self.manager = mp.Manager()
         self.input_q = self.manager.Queue()
@@ -55,15 +50,6 @@ class MultiProcessManager(object):
         
         # self.cap = cv2.VideoCapture("/home/HwHiAiUser/projects/atlas-track/inputs/MOT17-11-SDP-raw.webm")
 
-        
-        # for _ in range(input_q_size):
-        #     _, frame = self.cap.read()
-        #     self.input_q.put({
-        #         'frame_id': self.frame_id, 
-        #         'input': frame
-        #     })
-        #     self.frame_id += 1
-            
         self.chan = presenter_channel.open_channel("../uav_presenter_server.conf")
         if self.chan is None:
             raise Exception("Open presenter channel failed")
@@ -77,7 +63,7 @@ class MultiProcessManager(object):
         self.uav = connect_uav()
         self.uav.streamon()
 
-        self.feed_fps(fps=15)
+        self.feed_fps(fps=feed_fps)
 
             
     def stop(self):
@@ -100,7 +86,7 @@ class MultiProcessManager(object):
 
     def feed_fps(self, fps=15):
         sleep_time = 0 if fps >= 30 else (1/fps - 1/30)
-        while True:
+        while self.running_inference.value:
             self.feed()
             time.sleep(sleep_time)
               
@@ -212,4 +198,5 @@ class MultiProcessManager(object):
                 print("queue is Empty")
         logging.info(f"inference loop id {mp.current_process().pid} ends")
 
-mp_manager = MultiProcessManager(num_infer_processes=4)
+if __name__ == '__main__':
+    mp_manager = MultiProcessManager(num_infer_processes=3, feed_fps=15)
