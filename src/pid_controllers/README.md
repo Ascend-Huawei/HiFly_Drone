@@ -2,6 +2,8 @@
 
 PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controller using object detection inference results from the Atlas 200 DK as continuous feedback to determine the state of the drone. 
 
+**For more information, refer to the [PID Tracker Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)**
+
 ### What it is:
 - Written in Python 3.7.5
 - Uses djitellopy wrapper to execute Tello flight commands
