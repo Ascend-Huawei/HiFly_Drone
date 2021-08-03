@@ -5,7 +5,7 @@ import argparse
 sys.path.append("..")
 sys.path.append("../lib")
 
-from newMultiProcessManager import MultiProcessManager
+from MultiProcessManager import MultiProcessManager
 from utils.tools import init_presenter_server
 from utils.uav_utils import connect_uav
 
