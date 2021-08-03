@@ -47,7 +47,8 @@ class ModelProcessor(BaseProcessor):
         video_name = os.path.basename(self.args.input_video).replace(' ', '_').split('.')[0]
         self.save_dir = os.path.join(result_root, video_name)  
         mkdir_if_missing(self.save_dir)
-          
+        
+        """Use dataloader to test on video rather than live cam"""
         # setup dataloader, use LoadVideo or LoadImages
         # self.dataloader = LoadVideo(self.args.input_video, (1088, 608))
         # print(self.args.input_video)
@@ -66,38 +67,6 @@ class ModelProcessor(BaseProcessor):
         outputs = self.model.execute(preprocessed)
         result = self.postprocess(outputs, frame)
         return result
-        # print("Results will be saved at {}".format(self.save_dir))
-
-        # self.
-        # for frame_id, (count, img, img0) in enumerate(self.dataloader):
-        #     if frame_id % 20 == 0 and frame_id != 0:
-        #         print('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, self.timer.average_time)))
-
-        #     # run tracking, start tracking timer 
-        #     self.timer.tic()
-
-        #     # list of Tracklet; see multitracker.STrack
-        #     online_targets = self.tracker.update(np.array([img]), img0)
-
-        #     # prepare for drawing, get all bbox and id
-        #     online_tlwhs = []
-        #     online_ids = []
-        #     for t in online_targets:
-        #         tlwh = t.tlwh
-        #         tid = t.track_id
-        #         vertical = tlwh[2] / tlwh[3] > 1.6
-        #         if tlwh[2] * tlwh[3] > self.args.min_box_area and not vertical:
-        #             online_tlwhs.append(tlwh)
-        #             online_ids.append(tid)
-        #     self.timer.toc()
-        #     print(online_ids, online_tlwhs)
-        #     # draw bbox and id
-        #     online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
-        #                                     fps=1. / self.timer.average_time)
-        #     cv2.imwrite(os.path.join(self.save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
-
-
-        # return result
 
     def preprocess(self, img0):
         """preprocess frame from drone"""
@@ -120,7 +89,6 @@ class ModelProcessor(BaseProcessor):
                 online_tlwhs.append(tlwh)
                 online_ids.append(tid)
         self.timer.toc()
-        # print(online_ids, online_tlwhs)
         # draw bbox and id
         online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=self.tracker.frame_id,
                                         fps=1. / self.timer.average_time)
