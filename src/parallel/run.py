@@ -1,12 +1,33 @@
 """
-Sandbox for testing parallel inference (Depth Estimation + Object Detection)
+Sandbox for parallel model inference with concurrent.futures package (Depth Estimation + Object Detection)
 
 Navie implementation:
 0. Spawn ModelProcessor instances
 1. Thread grabs frame - store to queue for callback afterwards, and send frame to 2 models
 2. Once inference is done, send signal to dequeue
 3. Result fusion and send to presenter server
+
+Script Summary:
+    Using ProcessPoolExecutor to submit asynchronous executions of tasks (initializer). Set global flag if no globals are set.
+    Then initialize the corresponding ModelProcessor based on global flag on first run. Future calls to the target function (initializer) 
+    will utilize the pre-initialized ModelProcessor to make inference in parallel.
+
+    FutureObject encapsulates the asynchronous execution of a callable - returns a tuple if callable (initializer) is ran successfully without raising 
+    an Exception.
+
+    iF FutureObject has no exception - pass results to ResultHandler to process results (image fusion, write file).
+
+TODO: 
+    - Queue implementation to put frames from video stream -> forward different frames to processors for faster computation;
+        currently handling frame one-by-one and not utilizing all available processors
+    - Compare FPS of: 
+        - parallel inference vs single inference without Queue
+            + DE & OD with 3 workers ~= 1-2fps
+            + FD & OD with 3 workers ~= 7fps
+        - parallel inference vs single inference with Queue
+        - resource utilization (CPU %)
 """
+
 import concurrent.futures
 import time
 import sys
@@ -15,53 +36,41 @@ import cv2
 import logging
 import numpy as np
 from PIL import Image
-
+import argparse
 
 sys.path.append("..")
 sys.path.append("../lib")
 
-from utils.params import params
-from model_processors.IndoorDepthProcessor import ModelProcessor as DEModelProcessor
-from model_processors.ObjectDetectionProcessor import ModelProcessor as ODModelProcessor
-from model_processors.HandDetectionProcessor import ModelProcessor as HDModelProcessor
-from model_processors.FaceDetectionProcessor import ModelProcessor as FDModelProcessor
-from atlas_utils.presenteragent import presenter_channel
+from utils.tools import init_presenter_server, load_model_processor
 from atlas_utils.acl_image import AclImage
 
 def initializer(initargs):
+    """Main initialization and inference target function to be used by ProcessPoolExecutor
+    Initialize a ModelProcessor on each AI CPU and make inference. Each processor has global flags inited and mp 
+    to check if a ModelProcessor is initiated and its memory address.
+    :params:
+        initargs - Tuple(model_name: str, frame: np.ndarray) 
+    """
     # verify if global vars are initialized in this processor and their values
     if "inited" not in globals():
         print(f"Initializing global flag on processor {os.getpid()}...")
         global inited, mp
         inited, mp = False, None
 
-    logging.basicConfig(filename='parallel.log', level=logging.DEBUG)
     model_name, frame = initargs
     if not inited:
         print("ModuleProcessor initialization...")
-        if model_name == "hand_detection":
-            mp = HDModelProcessor(params["task"]["object_detection"]["hand_detection"])
-            logging.info(f"HandDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
-        elif model_name == "object_detection":
-            mp = ODModelProcessor(params["task"]["object_detection"]["yolov3"])
-            logging.info(f"ObjectDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
-        elif model_name == "face_detection":
-            mp = FDModelProcessor(params["task"]["object_detection"]["face_detection"])
-            logging.info(f"FaceDetectionMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
-        elif model_name == "depth_estimation":
-            mp = DEModelProcessor(params["task"]["depth_estimation"]["indoor_depth_estimation"])
-            logging.info(f"DepthEstimationMP Initialized.\nParent Process: {os.getppid()}\nProcess ID: {os.getpid()}")
-        else:
-            raise Exception("ModelProcessor not initialized, model not supported")
+        mp, model_params = load_model_processor(model_name)
+        mp = mp(model_params)
+        logging.info(f"{model_name} ModelProcessor Initialized.\tParent Process: {os.getppid()}\tProcess ID: {os.getpid()}")
         inited = True
     logging.info(f"MP {mp} already initialized in Processor {os.getpid()}, prepare for inferece...")
     assert mp is not None, f"ModuleProcessor on {os.getpid()} is None. Try again."
     return mp.predict(frame), model_name
 
-
 class ResultHandler:
-    """
-    Accept parentID (MainProcessor iD) and models (list) and handles inference results
+    """Accepts parentID (MainProcessor iD) and models (list) and handles inference results
+    Either perform frame fusion or saves individual inference results to respective subdirectory under data/parallel
     """
     data_dir = "../../data/parallel"
     def __init__(self, parentID, models):
@@ -69,18 +78,17 @@ class ResultHandler:
         self.models = models
         self._set_save_path()
         self.frame_count = 0
+        if not os.path.exists(self.data_dir):
+            os.mkdir(data_dir)
 
     def _output_tracker(self, model_name):
-        """
-        Set attribute to track the frame count for each model and returns the name of the latest frame to be used for saving 
-        """
+        """Set attribute to track the frame count for each model and returns the name of the latest frame to be used for saving"""
         attr = model_name + "_frame_count"
         try:
             frame_count = getattr(self, attr)
             setattr(self, attr, frame_count + 1)
             return str(frame_count) + ".png"
-        except AttributeError:
-            # no attribute - initialize as 0 and return
+        except AttributeError: # no attribute error - initialize as 0 and return
             setattr(self, attr, 0)
             return str(getattr(self, attr)) + "png"
 
@@ -96,11 +104,11 @@ class ResultHandler:
         for dir_name in self.out_dirs:
             try:
                 os.mkdir(dir_name)
-                print(f"Created output path: {output_dir}")
+                print(f"Created output path: {dir_name}")
             except FileExistsError as err:
-                print(f"{output_dir} already exists, emptying directory...")
-                for f in os.listdir(output_dir):
-                        os.remove(os.path.join(output_dir, f))
+                print(f"{dir_name} already exists, emptying directory...")
+                for f in os.listdir(dir_name):
+                        os.remove(os.path.join(dir_name, f))
 
     @staticmethod
     def _is_pil_image(img):
@@ -118,8 +126,7 @@ class ResultHandler:
         return cv2.hconcat(im_list_resize)
 
     def handle(self, future):
-        """
-        Unpack FutureObject result and saves image to the corresponding directory - model_name is guaranteed to be in self.out_dir by initialization.
+        """Unpack FutureObject result and saves image to the corresponding directory - model_name is guaranteed to be in self.out_dir by initialization.
         :param: 
             result - FutureObject of type Typle(inference_output, model_name)
         """
@@ -133,8 +140,10 @@ class ResultHandler:
             cv2.imwrite(os.path.join(save_dir, out_name), inference_res)
 
     def fusion(self, lst, write=False):
-        """
-        Input is a list of FutureObjects. Fuse the inference image ouptuts together and save them in the fused directory. 
+        """Fuses inference results into one image and save them in the fused directory
+        :param:
+            lst - List of FutureObjects
+            write - Boolean, write and save to path if True
         """
         images = [future.result()[0] for future in lst]
         for image in images:
@@ -149,82 +158,50 @@ class ResultHandler:
             frame_out_path = os.path.join(save_dir, frame_name)
             cv2.imwrite(frame_out_path, fuse)
             self.frame_count += 1
-        
         return fused
 
 def kill_all(e):
     e.shutdown(wait=True, cancel_futures=False)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Parallel Inference setting")
+    parser.add_argument("--models", nargs="+", help="Two supported models", default=['yolov3', 'indoor_depth_estimation'])
+    parser.add_argument("--num_processors", type=int, help="Number of Processors", default=3)
+    parser.add_argument("--vid_in", type=str, help="Path to video input", required=True)
+    parser.add_argument("--fuse", type=bool, help="Perform side-by-side image fusion and forward to Presenter Server if True", default=True)
+    args = parser.parse_args()
 
-## Parameters ##
-MAX_WORKERS = 6 
-models = ["face_detection", "object_detection",]
-# models = ["depth_estimation", "object_detection",]
-test_capture = "../../data/handGesture.avi" # A pre-recorded video - need to change this to something else if someone else is using it
-SRC_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRESENTER_SERVER_CONF = os.path.join(SRC_PATH, "uav_presenter_server.conf")
+    models, num_processors, vid_in, do_fusion = args.models, args.num_processors, args.vid_in, args.fuse
 
-"""
-DEV LOG
+    chan = init_presenter_server()
+    cap = cv2.VideoCapture(vid_in)
+    
+    res_handler = ResultHandler(os.getpid(), models)
 
-Summary:
-    Using ProcessPoolExecutor to submit asynchronously executions of tasks (initializer). Will set global flag if no globals are set.
-    Then initialize the corresponding ModelProcessor based on global flag ONCE. Future calls to the target function will utilize the pre-initialize
-    ModelProcessor to make inference in parallel.
+    logging.basicConfig(filename='exec.log', level=logging.DEBUG)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_processors) as executor:
+        while cap.isOpened():
+            _, frame_org = cap.read()
+            cv2.waitKey(10)
+            if frame_org is None:
+                print("VideoCapture frame is None. Releasing VidCap and killing all processors in pool...")
+                break
+            args = ((model, frame_org) for model in models)
 
-    FutureObject encapsulates the asynchronous execution of a callable - returns a tuple if callable (initializer) is ran successfully without raising 
-    an Exception.
+            res = [executor.submit(initializer, (model, frame_org)) for model in models]
+            for future in concurrent.futures.as_completed(res):
+                if future.exception() is not None:
+                    print("FutureObject exception encountered, saving exception to log..")
+                    logging.exception(future.exception())
+                if not do_fusion:
+                    future.add_done_callback(res_handler.handle)
+                    
+            if do_fusion:
+                fused = res_handler.fusion(res, write=False)
+                _, jpeg_image = cv2.imencode('.jpg', fused)
+                jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
+                chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
 
-    iF FutureObject has no exception - pass results to ResultHandler to process results (image fusion, write file).
-
-TODO: 
-    - Queue implementation to put frames from video stream -> forward different frames to processors for faster computation;
-        currently handling frame one-by-one and not utilizing all available processors
-    - Compare FPS of: 
-        - parallel inference vs single inference without Queue
-            + DE & OD with 3 workers ~= 1-2fps
-            + FD & OD with 3 workers ~= 7fps
-        - parallel inference vs single inference with Queue
-        - resource utilization (CPU %)
-    - Integration of parallel inference to platform once finalize
-"""
-cap = cv2.VideoCapture(test_capture)
-res_handler = ResultHandler(os.getpid(), models)
-
-chan = presenter_channel.open_channel(PRESENTER_SERVER_CONF)
-if chan is None:
-    print("Open presenter channel failed")
-
-logging.basicConfig(filename='exec.log', level=logging.DEBUG)
-with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-    while cap.isOpened():
-        _, frame_org = cap.read()
-        cv2.waitKey(10)
-        if frame_org is None:
-            print("VideoCapture frame is None. Releasing VidCap and killing all processors in pool...")
-            break
-        args = ((model, frame_org) for model in models)
-
-        res = [executor.submit(initializer, (model, frame_org)) for model in models]
-        for future in concurrent.futures.as_completed(res):
-            if future.exception() is not None:
-                print("FutureObject exception encountered, saving exception to log..")
-                logging.exception(future.exception())
-            # Uncomment else clause below to save individual model output to model folder
-            # else:
-            #     future.add_done_callback(res_handler.handle)
-
-        # Uncomment below to save fusion models outputs to fused folder - currently does not support DE fusion due to output dimension mismatch
-        fused = res_handler.fusion(res)
-
-        _, jpeg_image = cv2.imencode('.jpg', fused)
-        jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
-        chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
-
-
-    cap.release()
-    time.sleep(5)
-    kill_all(executor)
-
-
-
+        cap.release()
+        time.sleep(1)
+        kill_all(executor)

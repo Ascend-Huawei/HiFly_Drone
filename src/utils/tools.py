@@ -16,6 +16,7 @@ def load_model_processor(model_name):
         Returns
             A ModelProcessor class and its parameters for initialization
         """
+        MP = None
         for task, task_models in params['task'].items():
             if model_name not in task_models:
                 continue
@@ -25,6 +26,9 @@ def load_model_processor(model_name):
             MP = import_module(f"model_processors.{processor}")
             MP = getattr(MP, "ModelProcessor")
             return MP, model_info
+
+        if MP is None:
+            raise Exception("Model name not found in params, see params.py for supported models.")
 
 def init_presenter_server():
     PRESENTER_SERVER_CONF = params['presenter_server_conf']
