@@ -1,5 +1,5 @@
 """
-Sandbox for parallel model inference with concurrent.futures package (Depth Estimation + Object Detection)
+Sample script for running parallel inference on a video with two different models (Depth Estimation + Object Detection)
 
 Navie implementation:
 0. Spawn ModelProcessor instances
@@ -16,16 +16,6 @@ Script Summary:
     an Exception.
 
     iF FutureObject has no exception - pass results to ResultHandler to process results (image fusion, write file).
-
-TODO: 
-    - Queue implementation to put frames from video stream -> forward different frames to processors for faster computation;
-        currently handling frame one-by-one and not utilizing all available processors
-    - Compare FPS of: 
-        - parallel inference vs single inference without Queue
-            + DE & OD with 3 workers ~= 1-2fps
-            + FD & OD with 3 workers ~= 7fps
-        - parallel inference vs single inference with Queue
-        - resource utilization (CPU %)
 """
 
 import concurrent.futures

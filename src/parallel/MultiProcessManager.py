@@ -1,13 +1,17 @@
 """
-Sandbox for testing parallel inference (Depth Estimation + Object Detection)
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Navie implementation:
-0. Spawn ModelProcessor instances
-1. Thread grabs frame - store to queue for callback afterwards, and send frame to 2 models
-2. Once inference is done, send signal to dequeue
-3. Result fusion and send to presenter server
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
-import concurrent.futures
+
 import multiprocessing as mp
 from multiprocessing import Process, Queue, Pool
 import time
@@ -20,28 +24,26 @@ import numpy as np
 sys.path.append("..")
 sys.path.append("../lib")
 
-from utils.uav_utils import connect_uav 
-from utils.params import params
 from utils.tools import load_model_processor
-
-from model_processors.BaseProcessor import BaseProcessor
-
-# from model_processors.IndoorDepthProcessor import ModelProcessor as DEModelProcessor
-# from model_processors.ObjectDetectionProcessor import ModelProcessor as ODModelProcessor
-# from model_processors.HandDetectionProcessor import ModelProcessor as HDModelProcessor
-from model_processors.FaceDetectionProcessor import ModelProcessor as FDModelProcessor
-
-from atlas_utils.presenteragent import presenter_channel
 from atlas_utils.acl_image import AclImage
 
 
-"""
-1. Instaniate Models then do inference in parallel
-    - put submit in queue 
-2. Wait until both processes are completed, grab the result and pass to fusion
-
-"""
 class MultiProcessManager(object):
+    """Manager for Multiprocessing Inference 
+
+    Implementation:
+    0. Spawn ModelProcessor instances
+    1. Thread grabs frame - store to queue for callback afterwards, and send frame to 2 models
+    2. Once inference is done from all processes, send signal to dequeue
+    3. Result fusion and send to presenter server
+
+    :params:
+        + chan                  - instantiated presenter server channel
+        + uav                   - instantiated TelloUAV object
+        + model_name            - name of the inference module to run
+        + num_infer_processes   - number of processes
+        + fps                   - inference rate of model
+    """
     def __init__(self, chan, uav, model_name, num_infer_processes=1, fps=15) -> None:
         super().__init__()
         
