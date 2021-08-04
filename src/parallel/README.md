@@ -2,7 +2,7 @@
 
 Multiprocess Inference Manager enables the Atlas 200 DK to perform asynchronous inference on Tello-UAV live video stream over several AI CPUs, thus improving overall inference and feedback time.  
 
-**For more information, refer to the [MultiProcessManager Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)**
+**For more information, refer to the [MultiProcessManager Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Multiprocess-Inference)**
 
 ### What it is:
 - Written in Python 3.7.5
