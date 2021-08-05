@@ -60,7 +60,6 @@ class LiveRunner:
 
             ## Model Prediction ##
             result_img = self.model_processor.predict(frame_org)
-            # result_img, action = self.model_processor.predict(frame_org)
 
             """ Display inference results and send to presenter channel """
             _, jpeg_image = cv2.imencode('.jpg', result_img)

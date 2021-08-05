@@ -12,10 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import os
 import cv2
 import numpy as np
-import sys
 from model_processors.BaseProcessor import BaseProcessor
 
 class ModelProcessor(BaseProcessor):
@@ -23,28 +21,19 @@ class ModelProcessor(BaseProcessor):
     def __init__(self, params):
         super().__init__(params)
 
-
     def predict(self, img_original):
-        """run predict"""
-        #preprocess image to get 'model_input'
         model_input = self.preprocess(img_original)
-
-        # execute model inference
-        result = self.model.execute([model_input]) 
+        infer_out = self.model.execute([model_input])
+        result = self.postprocess(img_original, infer_out)
         return result 
 
     def preprocess(self, img_original):
-        """
-        preprocessing: resize image to model required size
-        """
-        image = cv2.resize(img_original, (300,300))
+        image = cv2.cvtColor(img_original, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (300,300))
         image = image.astype(np.uint8).copy()
         return image
 
-    def postprocessing(self, image, resultList, threshold=0.3):
-        # """
-        # draw the bounding boxes for all detected hands with confidence greater than a set threshold
-        # """
+    def postprocess(self, image, resultList, threshold=0.6):
         num_detections = resultList[0][0].astype(np.int)
         scores = resultList[2]
         boxes = resultList[3]
@@ -72,5 +61,4 @@ class ModelProcessor(BaseProcessor):
             else:
                 continue
 
-        # print("detected bbox num:", bbox_num)
         return image
