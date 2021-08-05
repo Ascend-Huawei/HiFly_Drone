@@ -31,6 +31,13 @@ paths = validate_paths()
 params = {
     "task": {
         "classification": {
+            "gesture_yuv": {
+                "model_width": 256,
+                "model_height": 224,
+                "model_path": os.path.join(paths["MODEL_PATH"], "gesture_yuv.om"),
+                "model_processor": "HandGestureProcessor",
+                "model_info": "https://gitee.com/ascend/modelzoo/tree/master/contrib/TensorFlow/Research/cv/gesture_recognition/ATC_gesture_recognition_Caffe_AE"
+            },
 
         },
         "object_detection": {
@@ -38,9 +45,7 @@ params = {
                 "model_width": 416,
                 "model_height": 416,
                 "model_path": os.path.join(paths["MODEL_PATH"], "yolov3.om"),
-                # "model_processor": os.path.join(paths["SRC_PATH"], "ObjectDetectionProcessor.py"),
                 "model_processor": "ObjectDetectionProcessor",
-                "live_runner": "run_live_obj_detection",
                 "model_info": "https://gitee.com/ascend/modelzoo/tree/master/contrib/TensorFlow/Research/cv/yolov3/ATC_yolov3_caffe_AE"
             },
             "hand_detection": {
@@ -48,7 +53,6 @@ params = {
                 "model_height": 300,
                 "model_path": os.path.join(paths["MODEL_PATH"], "hand_detection.om"),
                 "model_processor": "HandDetectionProcessor",
-                "live_runner": "run_live_hand_detection",
                 "model_info": "https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee"
             },
             "face_detection": {
@@ -56,7 +60,6 @@ params = {
                 "model_height": 416,
                 "model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
                 "model_processor": "FaceDetectionProcessor",
-                "live_runner": "run_live_face_detection",
                 "model_info": "<Example URL>",
                 "camera_width": 960,
                 "camera_height": 720,
@@ -98,7 +101,6 @@ params = {
                 "model_height": 480,
                 "model_path": os.path.join(paths["MODEL_PATH"], "indoor_depth_estimation.om"),
                 "model_processor": "IndoorDepthProcessor",
-                "live_runner": "run_live_indoor_depth_estimation",
                 "model_info": "https://github.com/shariqfarooq123/AdaBins",
                 "camera_width": 960,
                 "camera_height": 720,
