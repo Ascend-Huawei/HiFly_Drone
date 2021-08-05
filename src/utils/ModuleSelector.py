@@ -5,14 +5,16 @@ class ModuleSelector():
         self.params = params
             
     def user_input(self):
-        input_task = input("Choose task (C - Classification, O - Object Detection, S - Segmentation), D - Depth Estimation: ")
+        input_task = input("Choose task (C - Classification, O - Object Detection, T - Object Tracking, D - Depth Estimation, S - Segmentation): ")
         # select classification model - print the avaiable models to users and let them choose
         if input_task.lower() == "c":
-            pass
+            self.task  = "classification"
         elif input_task.lower() == "o":
             self.task = "object_detection"
         elif input_task.lower() == "d":
             self.task = "depth_estimation"
+        elif input_task.lower() == "t":
+            self.task = "object_tracking"
         self._select_model()
 
     def _select_model(self):
@@ -28,7 +30,6 @@ class ModuleSelector():
 
         self.model = models_list[menu_entry_index]
         self.processor = self.params["task"][self.task][self.model]["model_processor"]
-        self.live_runner = self.params["task"][self.task][self.model]["live_runner"]
         # go back and select another task, model, etc - prompt user-input
         if self.model == "Return to task selection":
             self.user_input()
@@ -39,7 +40,7 @@ class ModuleSelector():
             return
         model_info = self.params["task"][self.task][model]
         preview_output = f"""
-        {model}:\nInput shape (WxH): {model_info["model_width"]} x {model_info["model_height"]}\nDefault offline model (.om): {model_info["model_path"]}\nInfo: Visit {model_info["model_info"]}\nModelProcessor: {model_info["model_processor"]}\nLive Runner: {model_info["live_runner"]}
+        {model}:\nInput shape (WxH): {model_info["model_width"]} x {model_info["model_height"]}\nDefault offline model (.om): {model_info["model_path"]}\nInfo: Visit {model_info["model_info"]}\nModelProcessor: {model_info["model_processor"]}\n
         """
         return preview_output
 

@@ -27,7 +27,6 @@ class BaseProcessor:
         self.validate()
         self._model_width = params['model_width']
         self._model_height = params['model_height']
-        self.validate()
         self.model = Model(params['model_path'])
 
     def validate(self):
@@ -48,4 +47,3 @@ class BaseProcessor:
     def predict(self):
         pass
 
-    

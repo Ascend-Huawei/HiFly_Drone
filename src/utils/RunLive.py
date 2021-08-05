@@ -50,7 +50,7 @@ class LiveRunner:
             return
 
         self.engage_manual_control()
-
+        
         print("\n############################################################")
         print("Fetching UAV Livestream...")
         while True:
