@@ -26,10 +26,7 @@ class ModelProcessor(BaseProcessor):
 
     def predict(self, img_original):
         """run predict"""
-        #preprocess image to get 'model_input'
         model_input = self.preprocess(img_original)
-
-        # execute model inference
         result = self.model.execute([model_input]) 
         return result 
 
@@ -45,6 +42,7 @@ class ModelProcessor(BaseProcessor):
         # """
         # draw the bounding boxes for all detected hands with confidence greater than a set threshold
         # """
+        print("postprocessing...")
         num_detections = resultList[0][0].astype(np.int)
         scores = resultList[2]
         boxes = resultList[3]

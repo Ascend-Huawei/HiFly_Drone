@@ -63,6 +63,32 @@ params = {
             },
 
         },
+        "object_tracking":{
+            "pedestrian_tracking": {
+                "model_width": 1088,
+                "model_height": 608,
+                "model_path": os.path.join(paths["MODEL_PATH"], "mot_v2.om"),
+                "model_processor": "PedestrianTrackProcessor",
+                "live_runner": "run_live_pedestrian_track",
+                "model_info": "<Example URL>",
+                
+                "args": {
+                    "conf_thres": 0.35,
+                    "track_buffer": 30,
+                    "min_box_area": 100,
+                    "K": 100,
+                    "input_video": os.path.join(paths["SRC_PATH"], "../data/london.mp4"),
+                    "output_root": os.path.join(paths["SRC_PATH"], "../outputs"),
+                    "output_type": "images",
+                    "mean": [0.408, 0.447, 0.470],
+                    "std": [0.289, 0.274, 0.278],
+                    "down_ratio": 4,
+                    "num_classes": 1,
+                    "inp_shape": [608, 1088],
+                    "img0_shape": [720, 960]
+                },
+            },
+        },
         "segmentation": {
 
         },
