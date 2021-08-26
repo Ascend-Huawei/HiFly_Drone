@@ -1,44 +1,45 @@
 import rospy
 from actionlib import SimpleActionClient
+from smach import StateMachine, Concurrence, State
+import smach_ros
+from custom_ros_action.msg import InitDroneAction, InitDroneGoal, InitDroneResult, InitDroneAction, MoveAgentAction, MoveAgentGoal
 
-from custom_ros_action.msg import InitDroneAction, InitDroneGoal, MoveAgentAction, MoveAgentGoal
-
-def feedback_cb(msg):
-    """msg from Server"""
-    rospy.loginfo(f"Message received: {msg}")
-
-def call_manual_control_server(user_input):
-    client = SimpleActionClient('manual_control', MoveAgentAction)
-    client.wait_for_server()
-    goal = MoveAgentGoal()
-    if user_input == 'w':
-        goal.move_forward(5)
-    elif user_input == 'a':
-        goal.move_left(5)
-    elif user_input == 'd':
-        goal.move_backward(5)
-    elif user_input == 'd':
-        goal.move_right(5)    
-
-    client.send_goal(goal, feedback_cb=feedback_cb)
-    client.wait_for_result()
-    result = client.get_result()
-
-    print(result)
 
 if __name__ == '__main__':
-    try:
-        rospy.init_node('manual_client_node')
+    rospy.init_node('pid_action_client')
 
-        control_input = input('WASD for xy movement')
-        control_input = control_input.lower()
+    sm = StateMachine(outcomes=['succeeded', 'aborted', 'preempted'])
+    with sm:
+        StateMachine.add(label='CONNECT', 
+                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='connect')),
+                        transitions={'succeeded': 'CON'},
+                        )
 
-        valid_inputs = ['w', 'a', 's', 'd']
-        if control_input in valid_inputs:
-            final = call_manual_control_server(control_input)
-            rospy.loginfo(final)
-        else:
-            rospy.loginfo('Invalid input. Try again.')
+        """Concurrent & Nested"""
+        sm_concurrent = Concurrence(outcomes=['succeeded', 'aborted'],
+                                    default_outcome='succeeded',
+                                    outcome_map={'aborted': {'PUBLISH':'aborted'}})
 
-    except Exception as err:
-        raise err
+        sm_nested = StateMachine(outcomes=['succeeded', 'aborted', 'preempted'])
+        with sm_nested:
+            StateMachine.add('SEARCH',
+                            state=smach_ros.SimpleActionState('search_executor', MoveAgentAction),
+                            transitions={'aborted': 'TRACK'}
+                            )
+            StateMachine.add('TRACK',
+                            state=smach_ros.SimpleActionState('track_executor', MoveAgentAction),
+                            transitions={'aborted': 'SEARCH'}
+                            )
+                                    
+        # Open the container
+        with sm_concurrent:
+            Concurrence.add('PUBLISH', state=smach_ros.SimpleActionState('mode_switcher', InitDroneAction))
+            Concurrence.add('CONTROL_MOTOR', state=sm_nested)
+
+        StateMachine.add('CON', sm_concurrent,
+                               transitions={'succeeded':'CON',
+                                            'aborted':'aborted'})
+
+    # Execute SMACH plan
+    outcome = sm.execute()
+      
