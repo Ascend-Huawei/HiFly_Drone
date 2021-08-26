@@ -176,7 +176,7 @@ def main():
                         )
 
         StateMachine.add(label='TAKEOFF', 
-                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='takeoff'), result_slots=[]),
+                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='takeoff')),
                         # transitions={'succeeded': 'MANUAL'},
                         transitions={'succeeded': 'LAND'},
                         remapping={'takeoff_output': 'uav'}
@@ -206,4 +206,6 @@ def main():
  
 
 if __name__ == "__main__":
-    main()
+
+    uav = connect_uav()
+    getattr(uav, 'takeoff')()

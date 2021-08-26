@@ -1,7 +1,11 @@
 import sys
 import time
 import rospy
+
+import smach
 from smach import StateMachine, CBState
+from smach import user_data
+
 import smach_ros
 from actionlib import *
 from actionlib_msgs.msg import *
@@ -111,99 +115,56 @@ class ManualControlServer:
                     rospy.loginfo('Move forward.')
                     continue
 
-
-
-
         rospy.loginfo(f"@execute_manual_cb: {goal}")
         
         self._sas.set_succeeded()
             
-        
 
-# http://wiki.ros.org/smach/Tutorials/Simple%20Action%20State
-def main():
+@smach.cb_interface(input_keys=[], output_keys=['uav'], outcomes=['finished', 'failed'])
+def connect_cb(userdata):
+    rospy.loginfo('connecting to drone')
+    start_time = time.time()
+    rospy.loginfo(userdata)
+    uav = None
+    while uav is None:
+        if time.time() - start_time > 30:
+            try:
+                rospy.loginfo('Trying to connect')
+                uav = connect_uav()
+                if uav is not None:
+                    uav.streamon()
+                    rospy.loginfo("Connected drone. Stream on done.")
+                    userdata.uav = uav
+                    return 'finished'
+            except Exception as err:
+                print(f"Trying again... {time.time()-start_time}s remaining.")
+                raise err
+                # continue
+    return 'failed'
 
-    rospy.init_node('pid_track')
+@smach.cb_interface(input_keys=['uav'], output_keys=[], outcomes=['finished', 'failed'])
+def takeoff_cb(userdata):
+    rospy.loginfo('takeoff')
+    try:
+        rospy.loginfo(type(userdata.uav))
+        userdata.uav.takeoff()
+        return 'finished'
+    except Exception as err:
+        raise err
+    # if userdata.uav is not None:
+    #     try:
+    #         userdata.uav.takeoff()
+    #         return 'finished'
+    #     except Exception as err:
+    #         raise err
 
-    # Start an Action server
-    init_drone_server = InitDroneServer('init_drone')
-    manual_control_server = ManualControlServer('manual_control')
+if __name__ == '__main__':
+    rospy.init_node('pid_state_machine')
 
-    # rospy.loginfo(f"Node initialized, started InitDroneServer: {server}")
-
-    # create StateMachine
-    sm = StateMachine(outcomes=['succeeded', 'aborted', 'preempted'])
-
-    # Add states to the sm
-    """
-    "Inside a state -- there's a goal you want to achieve through certain actions. 
-                        Goals have outcomes: succeeded (action attained goal), aborted (action failed), preempted (action interrupted)"
-                        outcomes dictate what to do next.(which state to go to next)"
-    
-    For example:
-        + state:TRIGGER_INIT    -- goal:initialize drone; action:connect_uav
-        + state:TRIGGER_SEARCH  -- goal:search for target; action:rotation etc 
-        + state:TRIGGER_TRACK -- goal:initialize drone; action:connect_uav. succeed=TRACK_STATIC
-        + state:TRIGGER_TRACK_STATIC -- goal:initialize drone; action:connect_uav. succeed=TRACK_CB
-        + state:TRIGGER_TRACK_CB -- goal:initialize drone; action:connect_uav. succeed=
-
-    smach_ros.SimpleActionServer(name, Action, execute_cb, auto_start=True)
-        + extends ActionServer with goal policy: only one goal is active status
-
-    sm.StateMachine.add(label, state, transitions, remapping)
-        - label (string) - The label of the state being added.
-
-        - state - An instance of a class implementing the State interface.
-            smach_ros.SimpleActionState(action_name, action_spec, goal, goal_cb, etc)
-                + param::action_name(str)
-                + param::action (actionlib action msg) -- action to attain goal (connect_uav)
-                + param::goal(actionlib goal msg)  -- goal for action (Establish connection between uav)
-                + param::goal_key(str)
-
-        - transitions - A dictionary mapping state outcomes to other state labels or container outcomes.
-        - remapping - A dictrionary mapping local userdata keys to userdata keys in the container.
-    """
+    sm = StateMachine(outcomes=['done'])
     with sm:
-
-        # def goal_callback(userdata, default_goal):MoveAgentAction
-        #     goal.goal = 2,
-        #     return goal
-
-        StateMachine.add(label='TRIGGER_INIT', 
-                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='connect')),
-                        transitions={'succeeded': 'TAKEOFF'},
-                        remapping=None
-                        )
-
-        StateMachine.add(label='TAKEOFF', 
-                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='takeoff'), result_slots=[]),
-                        # transitions={'succeeded': 'MANUAL'},
-                        transitions={'succeeded': 'LAND'},
-                        remapping={'takeoff_output': 'uav'}
-                        )
-
-        StateMachine.add(label='LAND',
-                        state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='land')),
-                        transitions={'aborted': 'succeeded'},
-                        remapping={'land_input', 'uav'}
-                        )
-
-        # StateMachine.add(label='MANUAL',
-        #                 state=smach_ros.SimpleActionState('manual_control', MoveAgentAction, goal=MoveAgentGoal),
-        #                 transitions={'aborted': 'LAND', 'succeeded':'succeeded'},
-        #                 remapping={'manual_input': 'uav'}
-        #                 )
-
-        # StateMachine.add(label='LAND',
-        #                 state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='land')),
-        #                 transitions={'aborted': 'succeeded'},
-        #                 remapping={'land_input': 'uav'}
-        #                 )
-        
-    
-    outcome = sm.execute()
-    rospy.signal_shutdown('All Done.')
- 
-
-if __name__ == "__main__":
-    main()
+        StateMachine.add('CONNECT', CBState(connect_cb), 
+                        transitions={'finished': 'TAKEOFF', 'failed': 'done'})
+        StateMachine.add('TAKEOFF', CBState(takeoff_cb), 
+                        transitions={'finished': 'done', 'failed': 'done'})
+    sm.execute()
