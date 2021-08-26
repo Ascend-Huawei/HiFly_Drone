@@ -126,6 +126,7 @@ class CameraPublisher:
         rospy.loginfo("CamerPublisher node shutdown...")
         rospy.loginfo(f"Release resources...")
 
+
 if __name__ == "__main__":
 
     uav = connect_uav()

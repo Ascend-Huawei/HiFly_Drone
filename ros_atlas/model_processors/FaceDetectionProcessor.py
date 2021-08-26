@@ -69,7 +69,6 @@ class ModelProcessor(BaseProcessor):
 
         if len(nparryList) > 0:
             for box in boxList:  # should be box = boxList[0] -- single box
-
                 # TO REMOVE ########################################### 
                 area = (box[1] - box[0]) * (box[3] - box[2])
                 if area > process_var_bbox_area:
@@ -82,8 +81,6 @@ class ModelProcessor(BaseProcessor):
 
         print(f"\n####################################################################")
         print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
-        # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
-        # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
 
         return frame, (process_var_bbox_area, cx, cy)
     

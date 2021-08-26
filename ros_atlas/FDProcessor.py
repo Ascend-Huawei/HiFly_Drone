@@ -20,6 +20,7 @@ class FDPostNode(Postprocessor):
         array_3 = np.reshape(np.array(msg.array3.list), (1, 52, 52, 18))
         return [array_1, array_2, array_3]
 
+
     def run_pid(self, processor, img_format='passthrough'):
         while not rospy.is_shutdown():
             if not self.message_queue.empty():
@@ -32,8 +33,7 @@ class FDPostNode(Postprocessor):
                     rospy.loginfo(f"@postprocess: {type(postprocessed)}")
 
                     # Publish postprocess image for visualization
-                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
-                    self.postprocess_pub.publish(postprocessed)
+                    # postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
 
                     # NEW -- send process_variables to topic, state machine subscribed to see value of process var
                     process_var_pub = rospy.Publisher("/pid_fd/process_vars", ProcessVar, queue_size=1)
@@ -41,9 +41,11 @@ class FDPostNode(Postprocessor):
                     process_var_msg.area = process_vars[0]
                     process_var_msg.cx = process_vars[1]
                     process_var_msg.cy = process_vars[2]
+
+                    # self.postprocess_pub.publish(postprocessed)
                     process_var_pub.publish(process_var_msg)
 
-                    rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
+                    # rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
                     self.pub_counter += 1
                     self.postprocess_pub_rate.sleep()
 
@@ -70,4 +72,4 @@ if __name__ == "__main__":
     fd_processor = fd_postprocess_node.load_processor("face_detection")
     fd_postprocess_node.init()
     # fd_postprocess_node.run(fd_processor)
-    fd_postprocess_node.run_pid(fd_processor)
+    fd_postprocess_node.run_pid(fd_processor, img_format='rgb8')

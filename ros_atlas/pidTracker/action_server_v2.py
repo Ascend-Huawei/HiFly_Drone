@@ -37,9 +37,7 @@ class PIDActionServer:
         """
         self._init_sas = SimpleActionServer('init_drone', InitDroneAction, execute_cb=self.execute_init_cb, auto_start=False)
         self._con_publish_sas =  SimpleActionServer('mode_switcher', InitDroneAction, execute_cb=self.execute_start_stream_cb, auto_start=False)
-        self._con_pid_sas =  SimpleActionServer('controller', InitDroneAction, execute_cb=self.execute_main_cb, auto_start=False)
-        # self._con_search_sas =  SimpleActionServer('search_executor', MoveAgentAction, execute_cb=self.execute_search_cb, auto_start=False)
-        # self._con_track_sas =  SimpleActionServer('track_executor', MoveAgentAction, execute_cb=self.execute_track_cb, auto_start=False)
+        self._con_controller_sas =  SimpleActionServer('controller', InitDroneAction, execute_cb=self.execute_main_cb, auto_start=False)
         # attributed for PID_is_search
         self.setpoint_area = (20000, 100000)        # Lower and Upper bound for Forward&Backward Range-of-Motion - can be adjusted
         self.setpoint_center = (480, 360)
@@ -55,16 +53,14 @@ class PIDActionServer:
 
         # initialize subscriber (listens to postprocess for process_var info) 
         # **Note -- this logic can be moved into a function, which can get invoked after certain state
-        self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
+        # self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
         self.pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
         self.rate = rospy.Rate(30)
 
         # start the SASs
         self._init_sas.start()
         self._con_publish_sas.start()
-        # self._con_search_sas.start()
-        # self._con_track_sas.start()
-        self._con_pid_sas.start()
+        self._con_controller_sas.start()
         rospy.loginfo(f"SASs started. Ready for client.")
 
     def pid(self, error, prev_error):

@@ -27,10 +27,8 @@ class Postprocessor:
         + Handles ROS nodes related operations: Loading corresponding processor, ROS node initialization, message type formatting, faciliitate node communications, shutdown protocol
         + Subscribes to @topic:/acl_inference/<model_name>
         + Loads corresponding Processing module from <model_name>Processor -- Inherits the <model_name>Processor class but does NOT use AclResource to spawn Model.
-    
     @params
         expected_img_shape      expected image shape of incoming frame. Default is None (uses tello camera dimensions)  @type: Bool
-    
     Returns
         None
     """
