@@ -39,6 +39,8 @@ class Postprocessor:
         self._stamp_dict = dict()
         self._sub_cb_times = list()
         self._iteration_times = list()
+
+        rospy.on_shutdown(self.shutdown)
     
     def load_processor(self, model_name, expected_image_shape=None):
         mp, model_info = load_model_processor(model_name)
@@ -55,7 +57,7 @@ class Postprocessor:
 
             self.inference_sub = rospy.Subscriber(inference_topic, inference_msg_type, self.inference_callback, queue_size=1, buff_size=2**24)
             self.postprocess_pub = rospy.Publisher(postprocess_topic, Image, queue_size=1)
-            self.postprocess_pub_rate = rospy.Rate(10) 
+            self.postprocess_pub_rate = rospy.Rate(10)
             self.pub_counter = 0
             rospy.loginfo("Postprocess Node: Publisher & Subscriber initialized.")
 

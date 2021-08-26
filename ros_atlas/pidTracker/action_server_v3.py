@@ -44,7 +44,7 @@ class PIDActionServer:
         # initialize subscriber (listens to postprocess for process_var info) 
         self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
         self.pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
-        self.rate = rospy.Rate(30)
+        self.rate = rospy.Rate(10)
 
         # Result filter
         self.inference_filter = DecisionFilter(fps=10, window=3)
@@ -204,9 +204,10 @@ class PIDActionServer:
                 break
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             try:
-                image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
+                # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
                 img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
+                img_msg.header.stamp = rospy.Time.now()
                 self.pub.publish(img_msg)
                 pub_counter += 1
 

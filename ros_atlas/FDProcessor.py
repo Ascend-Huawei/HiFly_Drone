@@ -32,7 +32,6 @@ class FDPostNode(Postprocessor):
                     frame = CvBridge().imgmsg_to_cv2(message.img)
 
                     postprocessed = processor.postprocess(frame=frame, outputs=model_output)  
-                    print(f'1. Postprocess time: {time.time() - st}')                         
 
                     # Publish postprocess image for visualization
                     postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
@@ -61,6 +60,7 @@ class FDPostNode(Postprocessor):
     def run_pid(self, processor, img_format='passthrough'):
         while not rospy.is_shutdown():
             if not self.message_queue.empty():
+                st = time.time()
                 try:
                     message = self.message_queue.get()
                     model_output = self.deconstruct_ros_msg(message)
@@ -68,7 +68,7 @@ class FDPostNode(Postprocessor):
 
                     postprocessed, process_vars = processor.postprocess(frame=frame, outputs=model_output)
                     # Publish postprocess image for visualization
-                    # postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
+                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
 
                     # NEW -- send process_variables to topic, state machine subscribed to see value of process var
                     process_var_pub = rospy.Publisher("/pid_fd/process_vars", ProcessVar, queue_size=1)
@@ -77,13 +77,14 @@ class FDPostNode(Postprocessor):
                     process_var_msg.cx = process_vars[1]
                     process_var_msg.cy = process_vars[2]
 
-                    # self.postprocess_pub.publish(postprocessed)
+                    self.postprocess_pub.publish(postprocessed)
                     process_var_pub.publish(process_var_msg)
 
                     # rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
                     self.pub_counter += 1
                     self.postprocess_pub_rate.sleep()
 
+                    self._iteration_times.append(time.time() - st)
                 except CvBridgeError as err:
                     rospy.logerr("Ran into exception when converting Image type with CvBridge.")
                     raise err
