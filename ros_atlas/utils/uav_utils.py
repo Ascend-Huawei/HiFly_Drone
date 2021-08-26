@@ -12,7 +12,7 @@ def connect_uav():
         return uav
     except Exception as e:
         print("Failed to connect to Tello UAV, please try to reconnect")
-        raise 
+        raise e
 
 def autoflight(uav):
     uav.takeoff()
