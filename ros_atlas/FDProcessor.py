@@ -79,7 +79,7 @@ class FDPostNode(Postprocessor):
                     self.postprocess_pub.publish(postprocessed)
                     process_var_pub.publish(process_var_msg)
 
-                    # rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
+                    rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published to /pid_fd/process_vars.")
                     self.pub_counter += 1
                     self.postprocess_pub_rate.sleep()
 

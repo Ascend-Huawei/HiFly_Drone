@@ -43,14 +43,13 @@ class PIDActionServer:
         self._prev_x_err, self._prev_y_err = 0, 0
 
         # Initialize Subscriber & Publisher
-        self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
-        self.pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
+        self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.dfilter_sub_cb, queue_size=1, buff_size=2**24)
+        self.pub = rospy.Publisher('/tello/cam_data_raw', Image, queue_size=1)
         self.rate = rospy.Rate(10)
         rospy.loginfo(f"Subscriber & Publisher started. Ready for client.")
 
-
         # [Optional] Result filter - tune parameters
-        self.inference_filter = DecisionFilter(fps=10, window=3)
+        self.inference_filter = DecisionFilter(fps=5, window=2)
 
         # start the SASs
         self._init_sas.start()
@@ -76,13 +75,12 @@ class PIDActionServer:
             self._is_search = True
             self._x_err = self._prev_x_err
             self._y_err = self._prev_y_err
-            return
-        # otherwise -> Track mode and calculate the corresponding process variables
-        self._is_search = False
-        self._area = msg.area
-        self._x_err = msg.cx - self.setpoint_center[0]
-        self._y_err = self.setpoint_center[1] - msg.cy
-        return
+        else:
+            # otherwise -> Track mode and calculate the corresponding process variables
+            self._is_search = False
+            self._area = msg.area
+            self._x_err = msg.cx - self.setpoint_center[0]
+            self._y_err = self.setpoint_center[1] - msg.cy
     
     def dfilter_sub_cb(self, msg):
         """Filtere-based Subscriber callback, alternative to self.process_var_sub_cb.
@@ -133,6 +131,10 @@ class PIDActionServer:
                     self._uav = connect_uav()
                     if self._uav is not None:
                         self._uav.streamon()
+
+                        """For testing only -- set speed to low to avoid errorneous movements"""
+                        self._uav.set_speed(10)
+
                         rospy.loginfo("@init_cb: Tello Drone connection established.")
                         self._init_sas.set_succeeded()
                 except Exception as err:
@@ -141,21 +143,41 @@ class PIDActionServer:
         # Goal: Takeoff
         elif goal.type == "takeoff":
             self._uav.takeoff()
+            # self._uav.move_up(70)
+            self._uav.send_rc_control(0, 0, 20, 0)
             self._init_sas.set_succeeded()
+
         # Goal: Land
         elif goal.type == "land":
             self._uav.land()
-            self._init_sas.set_succeeded()
+            while True:
+                exit_program = input("Drone has landed. Do you wish to terminate the program or run it again? (y/n)").lower()
+                
+                if exit_program not in ['y', 'n']:
+                    rospy.logwarn("Unsupported input, please enter either y or n")
+                    continue
+                break
+            if exit_program == "n":
+                rospy.loginfo("Terminating program.")
+                # self._uav.end()
+                self._init_sas.set_aborted()
+            else:
+                rospy.loginfo("Re-running program, returning to TAKEOFF state.")
+                self._init_sas.set_succeeded()
 
     def execute_manual_cb(self, goal):
         engage_manual = None
         while True:
-            engage_manual = input('Engage manual control? (y/n)').lower()
-            if engage_manual not in ['y', 'n']: 
-                rospy.logwarn("Unknown input, enter either y or n")
-                continue
-            else: 
-                break
+            try:
+                engage_manual = input('Engage manual control? (y/n)').lower()
+                if engage_manual not in ['y', 'n']: 
+                    rospy.logwarn("Unsupported input, enter either y or n")
+                    continue
+                else: 
+                    break
+            except KeyboardInterrupt:
+                self._manual_sas.set_aborted()
+
         if engage_manual == 'n':
             rospy.loginfo("Skipping manual control, starting PIDTrack mode")
             self._manual_sas.set_succeeded()
@@ -207,8 +229,11 @@ class PIDActionServer:
         Returns:
             None
         """
-        rospy.loginfo('Searching...')
-        self._uav.send_rc_control(0,0,0,20)
+        rospy.loginfo('[Search]')
+        # self._uav.send_rc_control(0,0,0,-10)
+        self._uav.send_rc_control(0,0,0, 20)
+        # self._uav.rotate_clockwise(45)
+        # self._uav.rotate_counter_clockwise(90)
     
     def execute_track_cb(self, goal) -> None:
         """Class method for handling tracking mode
@@ -227,7 +252,7 @@ class PIDActionServer:
         # Localization of ToI to the center x-axis - adjusts camera angle
         if self._x_err != 0:
             yaw_velocity = self.pid(self._x_err, self._prev_x_err)
-            yaw_velocity = int(np.clip(yaw_velocity, -100, 100))
+            yaw_velocity = int(np.clip(yaw_velocity, -50, 50))
 
         # Localization of ToI to the center y-axis - adjust altitude 
         if self._y_err != 0:
@@ -246,6 +271,7 @@ class PIDActionServer:
         self._uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
 
     def execute_main_cb(self, goal):
+        # self._uav.streamon()
         pub_counter = 0
         while not rospy.is_shutdown():
             image_data = self._uav.get_frame_read().frame
@@ -263,9 +289,10 @@ class PIDActionServer:
                 # listen to subscriber's results
                 if self._is_search:
                     self.execute_search_cb(goal)
+                    self.rate.sleep()
                 else:
                     self.execute_track_cb(goal)
-                self.rate.sleep()
+                    self.rate.sleep()
             except CvBridgeError as err:
                 rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
                 raise err
@@ -280,10 +307,17 @@ class PIDActionServer:
                 rospy.loginfo("Keyboard Interrupt, aborting PID state.")
                 self._pid_sas.set_aborted()
 
+    def signal_land(self):
+        self._uav.land()
+
 
 if __name__ == '__main__':
     import os
     print(f"ActionServer pid: {os.getpid()}")
     rospy.init_node('pid_action_server')
-    ActionServer = PIDActionServer('pid_tracker')
-    rospy.spin()
+    try:
+        ActionServer = PIDActionServer('pid_tracker')
+        rospy.spin()
+    except KeyboardInterrupt as e:
+        ActionServer.signal_land()
+    

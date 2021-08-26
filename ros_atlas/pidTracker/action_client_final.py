@@ -31,9 +31,9 @@ if __name__ == '__main__':
         )
         StateMachine.add(label='LAND', 
                         state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='land')),
-                        transitions={'succeeded': 'aborted'},
+                        transitions={'succeeded': 'TAKEOFF', 'aborted': 'aborted'},
                         )
 
     # Execute SMACH plan
     outcome = sm.execute()
-      
+    
