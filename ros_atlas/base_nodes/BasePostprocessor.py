@@ -95,7 +95,7 @@ class Postprocessor:
         inf2post_avg_msg_trasnfer_time = sum(inf2post_msg_transfer_times) / len(inf2post_msg_transfer_times)
 
         import pickle
-        pickle.dumps(self._stamp_dict, open('inf2post_msg_transfer.pkl', 'wb'))
+        pickle.dump(self._stamp_dict, open('inf2post_msg_transfer.pkl', 'wb'))
 
         rospy.loginfo(f'\nPostprocessor runtime results:')
         rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")

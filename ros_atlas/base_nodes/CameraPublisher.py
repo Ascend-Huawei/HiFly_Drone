@@ -155,7 +155,7 @@ class CameraPublisher:
             
     def shutdown(self) -> None:
         """Shutdown hook"""
-        avg_iteration_time = sum(self._iteration_times) // len(self._iteration_times)
+        avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
         rospy.loginfo(f"CameraPublisher Average iteration time: {avg_iteration_time}")
         rospy.loginfo("CamerPublisher node shutdown. Release resources...")
 

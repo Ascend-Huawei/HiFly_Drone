@@ -111,7 +111,7 @@ class BaseInferenceNode:
         cam2inf_avg_msg_transfer_time = sum(cam2inf_msg_transfer_times) / len(cam2inf_msg_transfer_times)
 
         import pickle
-        pickle.dumps(self._stamp_dict, open('cam2inf_msg_transfer.pkl', 'wb'))  
+        pickle.dump(self._stamp_dict, open('cam2inf_msg_transfer.pkl', 'wb'))  
 
         rospy.loginfo(f'\nInference {self._model_name} runtime results:')
         rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")
