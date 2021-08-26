@@ -209,3 +209,4 @@ class PIDActionServer:
 if __name__ == '__main__':
     rospy.init_node('pid_action_server')
     ActionServer = PIDActionServer('pid_tracker')
+    rospy.spin()

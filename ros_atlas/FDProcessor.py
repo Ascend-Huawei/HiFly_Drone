@@ -1,3 +1,4 @@
+import os
 import sys
 import rospy
 import numpy as np
@@ -19,7 +20,6 @@ class FDPostNode(Postprocessor):
         array_2 = np.reshape(np.array(msg.array2.list), (1, 26, 26, 18))
         array_3 = np.reshape(np.array(msg.array3.list), (1, 52, 52, 18))
         return [array_1, array_2, array_3]
-
 
     def run_pid(self, processor, img_format='passthrough'):
         while not rospy.is_shutdown():
@@ -68,8 +68,9 @@ class FDPostNode(Postprocessor):
         
 
 if __name__ == "__main__":
+    print(f"FDProcessor pid: {os.getpid()}")
     fd_postprocess_node = FDPostNode()
-    fd_processor = fd_postprocess_node.load_processor("face_detection")
+    fd_processor = fd_postprocess_node.load_processor(model_name="face_detection", expected_image_shape=(360, 480))
     fd_postprocess_node.init()
     # fd_postprocess_node.run(fd_processor)
     fd_postprocess_node.run_pid(fd_processor, img_format='rgb8')

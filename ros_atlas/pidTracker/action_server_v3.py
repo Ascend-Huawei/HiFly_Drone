@@ -42,7 +42,7 @@ class PIDActionServer:
         self._prev_x_err, self._prev_y_err = 0, 0
 
         # initialize subscriber (listens to postprocess for process_var info) 
-        self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.dfilter_sub_cb, queue_size=1, buff_size=2**24)
+        self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
         self.pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
         self.rate = rospy.Rate(30)
 
@@ -100,7 +100,6 @@ class PIDActionServer:
             self._x_err = self._prev_x_err
             self._y_err = self._prev_y_err
 
-
     def execute_init_cb(self, goal):
         """Optional callback that gets called in a separate thread whenever a new goal is received, 
         allowing users to have blocking callbacks. Adding an execute callback also deactivates the goalCallback."""
@@ -135,7 +134,7 @@ class PIDActionServer:
             if image_data is None:
                 rospy.loginfo("Frame is None or return code error.")
                 break
-            # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
+            image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             try:
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
                 img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
@@ -197,8 +196,6 @@ class PIDActionServer:
         # self._con_track_sas.set_aborted()
 
     def execute_main_cb(self, goal):
-        # toss everything in here: publish, track, search
-        # 1, get frame (publish and receive feedback from subscriber)
         pub_counter = 0
         while not rospy.is_shutdown():
             image_data = self._uav.get_frame_read().frame
@@ -207,6 +204,7 @@ class PIDActionServer:
                 break
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             try:
+                image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
                 img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
                 self.pub.publish(img_msg)
@@ -235,5 +233,8 @@ class PIDActionServer:
 
 
 if __name__ == '__main__':
+    import os
+    print(f"ActionServer pid: {os.getpid()}")
     rospy.init_node('pid_action_server')
     ActionServer = PIDActionServer('pid_tracker')
+    rospy.spin()

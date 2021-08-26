@@ -1,3 +1,4 @@
+import os
 import rospy
 from smach import StateMachine, Concurrence, State
 import smach_ros
@@ -6,6 +7,8 @@ from custom_ros_action.msg import InitDroneAction, InitDroneGoal, InitDroneResul
 
 if __name__ == '__main__':
     rospy.init_node('pid_action_client')
+    print(f"StateMachine Client pid: {os.getpid()}")
+
 
     sm = StateMachine(outcomes=['succeeded', 'aborted', 'preempted'])
     with sm:

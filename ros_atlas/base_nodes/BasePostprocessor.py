@@ -37,11 +37,11 @@ class Postprocessor:
         self.expected_img_shape = expected_img_shape
         rospy.on_shutdown(self.shutdown)
     
-    def load_processor(self, model_name):
+    def load_processor(self, model_name, expected_image_shape=None):
         mp, model_info = load_model_processor(model_name)
         self._model_info = model_info
         self._model_name = model_name
-        return mp(params=model_info, process_only=True)
+        return mp(params=model_info, expected_image_shape=expected_image_shape, process_only=True)
     
     def init(self):
         try:
