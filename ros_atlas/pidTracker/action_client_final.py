@@ -1,4 +1,5 @@
 import os
+import threading
 import rospy
 from smach import StateMachine, State
 import smach_ros
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     with sm:
         StateMachine.add(label='CONNECT', 
                         state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='connect')),
-                        transitions={'succeeded': 'TAKEOFF'},
+                        transitions={'succeeded': 'TAKEOFF', 'aborted':'aborted'},
         )
         StateMachine.add(label='TAKEOFF', 
                         state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='takeoff')),
@@ -27,7 +28,7 @@ if __name__ == '__main__':
         StateMachine.add(label='PID',
                         state=smach_ros.SimpleActionState('main', MoveAgentAction),
                         # transitions={'succeeded': 'PID', 'aborted':'aborted'}
-                        transitions={'succeeded': 'PID', 'aborted':'LAND'}
+                        transitions={'succeeded': 'PID', 'preempted':'LAND', 'aborted':'LAND'}
         )
         StateMachine.add(label='LAND', 
                         state=smach_ros.SimpleActionState('init_drone', InitDroneAction, goal=InitDroneGoal(type='land')),
@@ -35,5 +36,21 @@ if __name__ == '__main__':
                         )
 
     # Execute SMACH plan
-    outcome = sm.execute()
-    
+    try:
+        sm.execute()
+    except KeyboardInterrupt:
+        rospy.signal_shutdown()
+
+    # # Create a thread to execute the smach container
+    # smach_thread = threading.Thread(target=sm.execute)
+    # smach_thread.start()
+
+    # # Wait for ctrl-c
+    # rospy.spin()
+
+    # # Request the container to preempt
+    # sm.request_preempt()
+
+    # # Block until everything is preempted 
+    # # (you could do something more complicated to get the execution outcome if you want it)
+    # smach_thread.join()

@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import sys
 import time
+import threading
 import rospy
 from actionlib import *
 from queue import Queue
@@ -25,7 +26,6 @@ class PIDActionServer:
     Initializes SASs and handles requests from ActionClient.
     """
     def __init__(self, name) -> None:
-        self.app_name = name
         self._uav = None
         
         # Initialize SimpleActionServers
@@ -33,29 +33,32 @@ class PIDActionServer:
         self._manual_sas = SimpleActionServer('manual_control', MoveAgentAction, execute_cb=self.execute_manual_cb, auto_start=False)
         self._pid_sas = SimpleActionServer('main', MoveAgentAction, execute_cb=self.execute_main_cb, auto_start=False)
 
-        # Set attributes for PID
-        self.setpoint_area = (20000, 100000)        # Case-specific, adjustable -- Lower and Upper bound for Forward & Backward Range-of-Motion
-        self.setpoint_center = (480, 360)           # Case-specific, adjustable -- Lower and upper bound for xy rotation     
-        self.pid_input = [0.1, 0.1, 0.1]            # Case-specific, adjustable -- Values for PID equation
-        self._is_search = True                      # Flag -- updated in self.process_var_sub_cb
-
+        # Setpoints for PID
+        self.setpoint_area = (20000, 100000)        # Case-specific, tunable -- Lower and Upper bound for Forward & Backward Range-of-Motion
+        self.setpoint_center = (480, 360)           # Case-specific, tunable -- Lower and upper bound for xy rotation     
+        self.pid_input = [0.1, 0.1, 0.1]            # Case-specific, tunable -- Values for PID equation
+        self._is_search = None                      # Flag -- updated in self.process_var_sub_cb
         self._x_err, self._y_err = 0, 0
         self._prev_x_err, self._prev_y_err = 0, 0
+        self.last_track_control = None
 
         # Initialize Subscriber & Publisher
         self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.dfilter_sub_cb, queue_size=1, buff_size=2**24)
+        # self.sub = rospy.Subscriber('/pid_fd/process_vars', ProcessVar, self.process_var_sub_cb, queue_size=1, buff_size=2**24)
         self.pub = rospy.Publisher('/tello/cam_data_raw', Image, queue_size=1)
         self.rate = rospy.Rate(10)
         rospy.loginfo(f"Subscriber & Publisher started. Ready for client.")
 
-        # [Optional] Result filter - tune parameters
-        self.inference_filter = DecisionFilter(fps=5, window=2)
+        # [Optional] Result filter - require parameters tuning
+        self.inference_filter = DecisionFilter(fps=10, window=1)
 
-        # start the SASs
+        # Initialize SASs
         self._init_sas.start()
         self._manual_sas.start()
         self._pid_sas.start()
         rospy.loginfo(f"SASs started. Ready for client.")
+
+        rospy.on_shutdown(self.shutdown)
 
     def pid(self, error, prev_error):
         """PID Output signal equation"""
@@ -119,39 +122,37 @@ class PIDActionServer:
         if goal.type == "connect":
             start_time = time.time()
             while self._uav is None:
-                # Case: if preempt has not been requested by Client-side
-                if self._init_sas.is_preempt_requested():
-                    self._init_sas.set_preempted()
 
-                # Check for how many tries are left
                 if time.time() - start_time > 30:
                     rospy.loginfo("Time exceeded 30seconds, aborting action.")
                     self._init_sas.set_aborted()
                 try:
                     self._uav = connect_uav()
                     if self._uav is not None:
+                        rospy.loginfo("Tello Drone connection established.")
                         self._uav.streamon()
 
-                        """For testing only -- set speed to low to avoid errorneous movements"""
-                        self._uav.set_speed(10)
+                        if self._uav.get_battery() < 15:
+                            rospy.warninfo("Cannot takeoff due to low battery, please replace the battery and try again.")
+                            self._init_sas.set_aborted()
 
-                        rospy.loginfo("@init_cb: Tello Drone connection established.")
                         self._init_sas.set_succeeded()
                 except Exception as err:
                     print(f"Trying again... {time.time()-start_time}s remaining.")
                     continue
+
         # Goal: Takeoff
         elif goal.type == "takeoff":
             self._uav.takeoff()
             # self._uav.move_up(70)
-            self._uav.send_rc_control(0, 0, 20, 0)
+            self._uav.send_rc_control(0, 0, 30, 0)
             self._init_sas.set_succeeded()
 
         # Goal: Land
         elif goal.type == "land":
             self._uav.land()
             while True:
-                exit_program = input("Drone has landed. Do you wish to terminate the program or run it again? (y/n)").lower()
+                exit_program = input("Drone has landed. Do you wish to terminate the program or run it again (y/n)? ").lower()
                 
                 if exit_program not in ['y', 'n']:
                     rospy.logwarn("Unsupported input, please enter either y or n")
@@ -169,7 +170,7 @@ class PIDActionServer:
         engage_manual = None
         while True:
             try:
-                engage_manual = input('Engage manual control? (y/n)').lower()
+                engage_manual = input('Engage manual control (y/n)? ').lower()
                 if engage_manual not in ['y', 'n']: 
                     rospy.logwarn("Unsupported input, enter either y or n")
                     continue
@@ -179,10 +180,10 @@ class PIDActionServer:
                 self._manual_sas.set_aborted()
 
         if engage_manual == 'n':
-            rospy.loginfo("Skipping manual control, starting PIDTrack mode")
+            rospy.loginfo("Skipping manual control. Starting PIDTrack mode")
             self._manual_sas.set_succeeded()
         else:
-            rospy.loginfo("Manual Control engaged:")
+            rospy.loginfo("Manual Control engaged")
             rospy.loginfo("Listen Key: \n \
                             w a s d: move forward/left/back/right \n \
                             q e: rotate \n \
@@ -230,11 +231,8 @@ class PIDActionServer:
             None
         """
         rospy.loginfo('[Search]')
-        # self._uav.send_rc_control(0,0,0,-10)
         self._uav.send_rc_control(0,0,0, 20)
-        # self._uav.rotate_clockwise(45)
-        # self._uav.rotate_counter_clockwise(90)
-    
+
     def execute_track_cb(self, goal) -> None:
         """Class method for handling tracking mode
         Function:
@@ -242,7 +240,12 @@ class PIDActionServer:
         Returns:
             None 
         """
-        # while not self._is_search:
+        # Edge-case -- sample majority is Presence but no detection on latest sample
+        if self._x_err == float("-inf") or self._y_err == float("-inf"):
+            self._x_err = self._prev_x_err
+            self._y_err = self._prev_y_err
+            return
+
         forward_backward_velocity = 0
         left_right_velocity = 0
         up_down_velocity = 0
@@ -253,71 +256,65 @@ class PIDActionServer:
         if self._x_err != 0:
             yaw_velocity = self.pid(self._x_err, self._prev_x_err)
             yaw_velocity = int(np.clip(yaw_velocity, -50, 50))
+            self._prev_x_err = self._x_err
 
         # Localization of ToI to the center y-axis - adjust altitude 
         if self._y_err != 0:
             up_down_velocity = 3*self.pid(self._y_err, self._prev_y_err)
             up_down_velocity = int(np.clip(up_down_velocity, -50, 50))
+            self._prev_y_err = self._y_err
 
         # Rectify distance between drone and target from bbox area: Adjusts forward and backward motion
         if self._area > self.setpoint_area[0] and self._area < self.setpoint_area[1]:
             forward_backward_velocity = 0
         elif self._area < self.setpoint_area[0]:
             forward_backward_velocity = 20
-        elif self._area > self.setpoint_area[1]:
+        else:
             forward_backward_velocity = -20
 
-        rospy.loginfo(f"[Tracking] Actuator command: {left_right_velocity}, {forward_backward_velocity}, {up_down_velocity}, {yaw_velocity}")
-        self._uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
-
+        if (left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity) != self.last_track_control:
+            rospy.loginfo('Different track velocties as last time, sending to executor')
+            self._uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
+            self.last_track_control = (left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
+        
     def execute_main_cb(self, goal):
-        # self._uav.streamon()
-        pub_counter = 0
-        while not rospy.is_shutdown():
+        while True:
             image_data = self._uav.get_frame_read().frame
             if image_data is None:
-                rospy.loginfo("Frame is None or return code error.")
-                break
-            # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
+                rospy.logwarn("Frame is None or return code error.")
+                self._pid_sas.set_aborted()
+
             try:
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
                 img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
                 img_msg.header.stamp = rospy.Time.now()
                 self.pub.publish(img_msg)
-                pub_counter += 1
-
-                # listen to subscriber's results
-                if self._is_search:
+                
+                if self._is_search is None:
+                    rospy.loginfo(f"Waiting for response from Processor")
+                    self.rate.sleep()
+                elif self._is_search:
                     self.execute_search_cb(goal)
                     self.rate.sleep()
                 else:
                     self.execute_track_cb(goal)
                     self.rate.sleep()
-            except CvBridgeError as err:
-                rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-                raise err
-            except ROSSerializationException as err:
-                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-                raise err
-            except ROSException as err:
-                raise err
-            except ROSInterruptException as err:
-                rospy.loginfo("ROS Interrupt.")
-            except KeyboardInterrupt as err:
-                rospy.loginfo("Keyboard Interrupt, aborting PID state.")
+
+                # self._pid_sas.set_succeeded()
+
+            except (rospy.exceptions.ROSException, CvBridgeError, KeyboardInterrupt, ROSInterruptException):
+                rospy.logerr("Exception encounterd. Aborting PID state.")
                 self._pid_sas.set_aborted()
-
-    def signal_land(self):
-        self._uav.land()
-
+                time.sleep(5)
+    
+    def shutdown(self):
+        self._pid_sas.set_aborted()
+        
 
 if __name__ == '__main__':
     import os
     print(f"ActionServer pid: {os.getpid()}")
-    rospy.init_node('pid_action_server')
-    try:
-        ActionServer = PIDActionServer('pid_tracker')
-        rospy.spin()
-    except KeyboardInterrupt as e:
-        ActionServer.signal_land()
-    
+    rospy.init_node('pid_action_server', disable_signals=True)
+    # rospy.init_node('pid_action_server')
+    ActionServer = PIDActionServer('pid_tracker')
+    rospy.spin()
