@@ -141,20 +141,25 @@ class PIDActionServer:
         # Goal: Takeoff
         elif goal.type == "takeoff":
             self._uav.takeoff()
-            # self.takeoff_start = time.time()
-            # self._init_sas_result.result = True
             self._init_sas.set_succeeded()
         # Goal: Land
         elif goal.type == "land":
             self._uav.land()
-            # self.land_start = time.time()
-            # rospy.loginfo(f"@land: time taken from takeoff to land: {round(self.land_start-self.takeoff_start, 3)}")
             self._init_sas.set_succeeded()
 
     def execute_manual_cb(self, goal):
-        engage_manual = input('Engage manual control? (y/n): ').lower()
-        print(engage_manual)
-        if engage_manual == 'y':
+        engage_manual = None
+        while True:
+            engage_manual = input('Engage manual control? (y/n)').lower()
+            if engage_manual not in ['y', 'n']: 
+                rospy.logwarn("Unknown input, enter either y or n")
+                continue
+            else: 
+                break
+        if engage_manual == 'n':
+            rospy.loginfo("Skipping manual control, starting PIDTrack mode")
+            self._manual_sas.set_succeeded()
+        elif engage_manual == 'y':
             rospy.loginfo("Manual Control engaged:")
             rospy.loginfo("Listen Key: \n \
                             w a s d: move forward/left/back/right \n \
@@ -182,22 +187,21 @@ class PIDActionServer:
                         elif key == 'KEY_DOWN':
                             self._uav.move_down(30)
                         elif key == 'l':
-                            self._uav.land()
-                            rospy.loginfo("abort manual control")
+                            rospy.loginfo("Abort manual control, proceeding to land.")
                             self._manual_sas.set_aborted()
                         elif key=='k':
-                            rospy.loginfo("exiting manual control and starting PIDTrack mode")
+                            rospy.loginfo("Exiting manual control, proceeding to PIDTrack mode")
                             self._manual_sas.set_succeeded()
-
                         else:
-                            print("Unknown key: {}".format(key))
+                            rospy.logwarn("Unknown key: {}".format(key))
+
                     except Exception as err:
                         print("something wrong; key: " + key)
                         self._uav.land()
                         raise err
-        else:
-            rospy.loginfo("Dismiss manual control, starting PIDTrack mode")
-            self._manual_sas.set_aborted()
+            else:
+
+
 
     def execute_search_cb(self, goal) -> None:
         """Class method for handling search mode
