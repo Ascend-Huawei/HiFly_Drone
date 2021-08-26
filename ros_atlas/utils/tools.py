@@ -4,7 +4,8 @@ from importlib import import_module
 
 sys.path.append("../../")
 sys.path.append("..")       # for load_model_processor -- model_processor subpackage needs to be included in the namespace
-from ros_atlas.utils.params import params
+# from ros_atlas.utils.params import params
+from utils.params import params
 
 def validate_paths():
     """define paths to project, samples and home directory. Check if they exists"""

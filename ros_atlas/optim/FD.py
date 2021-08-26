@@ -5,6 +5,7 @@ import numpy as np
 import logging
 from queue import Queue
 import rospy
+import rosbag
 import sys
 import time
 
@@ -23,10 +24,14 @@ class FaceDetectorNode:
     def __init__(self) -> None:
         # Define Sub/Pub
         self.image_queue = Queue(maxsize=1)
-        # time performance metrics
+        
+         # Initialize time-metrics
         self._stamp_dict = dict()
         self._sub_cb_times = list()
         self._iteration_times = list()
+        
+        self.init_node()
+
         rospy.on_shutdown(self.shutdown)
 
     def load_model(self, model_name):
@@ -36,21 +41,21 @@ class FaceDetectorNode:
         # return mp(params=mp_info)
         return mp(params=mp_info, expected_image_shape=(360, 480))
 
-    def init(self):
+    def init_node(self):
         """Node initialization. Set Subscriber(s) and Publisher."""
         try:
             # rospy.init_node('acl_inference_node', anonymous=True)
-            rospy.init_node('acl_inference_node')
+            rospy.init_node('acl_inference_node', anonymous=True)
             rospy.loginfo("ACLInference Node initializing...")
 
             self._inference_topic = f"/acl_inference/{self._model_name}"
-            self._inference_msg_type = self._model_info["pub_message_type"]
 
             self.cam_data_sub = rospy.Subscriber("/tello/cam_data_raw", Image, self.image_callback, queue_size=1, buff_size=2**24)
             self.inference_pub = rospy.Publisher(self._inference_topic, Image, queue_size=1)
             self.inference_pub_rate = rospy.Rate(14)
             self.pub_counter = 0
             rospy.loginfo("ACLInference Node: Publisher & Subscriber initialized.")
+
         except ROSInitException as err:
             rospy.logerr(err)
 
@@ -91,7 +96,7 @@ class FaceDetectorNode:
                     result_frame = self.model.predict(image)
                     # cv2.imwrite('test_out.png', result_frame)
                     img_msg = CvBridge().cv2_to_imgmsg(result_frame, "rgb8")
-                    # ros_inference_msg = self.construct_ros_msg(model_output, image)
+                    img_msg.header.stamp = rospy.Time.now()
 
                     self.inference_pub.publish(img_msg)
                     self.pub_counter += 1
@@ -140,16 +145,6 @@ class FaceDetectorNode:
 
 
 if __name__ == '__main__':
-    # uav = connect_uav()
-    # uav.LOGGER.setLevel(logging.DEBUG)
-    # st = time.time()
-    # while time.time() - st < 10:
-    #     print('\n')
-    #     print('@query_attitude :', uav.query_attitude())
-    #     print('@get_pitch :', uav.get_pitch())
-    #     print('@get_yaw :', uav.get_yaw())
-    #     print('@get_roll :', uav.get_roll())
-
     fd_node = FaceDetectorNode()
     model = fd_node.load_model('face_detection') 
     fd_node.init()

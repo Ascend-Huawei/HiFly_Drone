@@ -2,6 +2,8 @@ import argparse
 import cv2
 import sys
 import time
+from typing import Optional 
+from djitellopy import Tello
 
 sys.path.append("../../")
 
@@ -24,7 +26,7 @@ class CameraPublisher:
     Returns:
         CameraPublisher node.
     """
-    def __init__(self, uav=None, fps=10):
+    def __init__(self, uav: Optional[Tello]=None, fps: int=10) -> None:
         self._uav = uav
         self._pub_counter = 0
         
@@ -60,16 +62,8 @@ class CameraPublisher:
             self._rate.sleep()
 
             self._iteration_times.append(time.time()-st)
-        except CvBridgeError as err:
+        except (ROSException, CvBridgeError, ROSSerializationException, ROSInterruptException)  as err:
             rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-            raise err
-        except ROSSerializationException as err:
-            rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-            raise err
-        except ROSException as err:
-            raise err
-        except ROSInterruptException as err:
-            rospy.loginfo("ROS Interrupt.")
             raise err
 
     def start_publish(self, args) -> None:
@@ -95,7 +89,6 @@ class CameraPublisher:
             #  NOTE: if enable, will also need to specify @param:expect_img_size in Postprocessor
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             self.convert_and_pubish(image_data)
-            raise Exception
             
     def shutdown(self) -> None:
         """Shutdown hook"""
