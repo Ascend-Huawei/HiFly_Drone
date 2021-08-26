@@ -1,0 +1,10 @@
+
+<launch>
+    <node pkg='tello_face_detector' type='CameraPublisher.py' name='cam_pub' respawn=true ns='face_detector'>
+        <param name="/tello/cam_data_raw/rate" type="double" value="10.0" />
+        <param name="/tello/cam_data_raw/use_live" type="bool" value="False" />
+    </node>
+
+    <node pkg='tello_face_detector' type='FD.py' name='face_detector' respawn=true ns='face_detector'/>
+    
+</launch>

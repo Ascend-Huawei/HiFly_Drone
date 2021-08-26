@@ -34,13 +34,30 @@ class ModelProcessor(BaseProcessor):
         self.model_shape = [self.h, self.w]
         self.num_classes = 1
         self.anchors = self.get_anchors()
+
+        self.metric = {
+            'preprocess': [],
+            'execute': [],
+            'postprocess': []
+        }
         
     def predict(self, frame):
+        st = time.time()
         preprocessed = self.preprocess(frame)
-        outputs = self.model.execute([preprocessed])
+        # print(f'Preprocess time: {time.time() - st}')
+        self.metric['preprocess'].append(time.time() - st)
+    
         
-        postprocess_start = time.process_time()
-        result = self.postprocess(frame, outputs)
+        st = time.time()
+        outputs = self.model.execute([preprocessed])
+        # print(f'Model Execute time: {time.time() - st}')
+        self.metric['execute'].append(time.time() - st)
+
+        st = time.time()
+        result = self.postprocess(outputs, frame)
+        # print(f'Postprocess time: {time.time() - st}')
+        self.metric['postprocess'].append(time.time() - st)
+
         return result
 
     def preprocess(self, frame):
@@ -76,7 +93,8 @@ class ModelProcessor(BaseProcessor):
             except KeyError as e:
                 print(e)
                 
-        return frame, (process_var_bbox_area, cx, cy) 
+        # return frame, (process_var_bbox_area, cx, cy) 
+        return frame
     
     def get_anchors(self):
         """return anchors
