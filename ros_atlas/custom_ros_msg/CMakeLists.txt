@@ -18,10 +18,12 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(
   FILES 
-  FloatArray.msg
-  FloatArrays.msg
+  Float32Array.msg
   Image.msg
   FaceDetection.msg
+  AdaBins.msg
+  HandDetection.msg
+  ProcessVar.msg
 )
 
 generate_messages(
@@ -31,8 +33,7 @@ generate_messages(
 )
 
 catkin_package(
-    CATKIN_DEPENDS
-    message_runtime
-    std_msgs
-    sensor_msgs
+    CATKIN_DEPENDS message_runtime rospy std_msgs sensor_msgs
 )
+
+
