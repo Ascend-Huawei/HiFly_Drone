@@ -35,22 +35,18 @@ if __name__ == '__main__':
                         transitions={'succeeded': 'TAKEOFF', 'aborted': 'aborted'},
                         )
 
-    # Execute SMACH plan
-    try:
-        sm.execute()
-    except KeyboardInterrupt:
-        rospy.signal_shutdown()
+    # Create a thread to execute the smach container
+    smach_thread = threading.Thread(target=sm.execute)
+    smach_thread.start()
 
-    # # Create a thread to execute the smach container
-    # smach_thread = threading.Thread(target=sm.execute)
-    # smach_thread.start()
+    # Wait for ctrl-c
+    rospy.spin()
 
-    # # Wait for ctrl-c
-    # rospy.spin()
+    # Request the container to preempt
+    sm.request_preempt()
 
-    # # Request the container to preempt
-    # sm.request_preempt()
+    # Block until everything is preempted 
+    # (you could do something more complicated to get the execution outcome if you want it)
+    smach_thread.join()
 
-    # # Block until everything is preempted 
-    # # (you could do something more complicated to get the execution outcome if you want it)
-    # smach_thread.join()
+    rospy.signal_shutdown("Manual shutdown")
