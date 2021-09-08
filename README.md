@@ -5,9 +5,9 @@ This project was created while keeping in mind of modularity and fast prototype 
 ### Useful Links
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
-[Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
+[🐶 Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
 [📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
-[HiFly PID Tracker Video](https://www.youtube.com/watch?v=Gix8SquAKGM&t=2s)<br>
+[🚁 HiFly PID Tracker Video](https://www.youtube.com/watch?v=Gix8SquAKGM&t=2s)<br>
 
 ### Hardware Requirements
 - [Atlas 200 DK](https://e.huawei.com/ph/products/cloud-computing-dc/atlas/atlas-200)
@@ -19,6 +19,8 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
 - [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
 - [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
+- [Project: Parallel Inference](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Multiprocess-Inference)
+- [Project: PID Tracker](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)
 <hr>
 
 ## Table of Content
@@ -109,7 +111,7 @@ A list of currently available modules
 - [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) <br>
 - [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) <br>
 - [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee) <br>
-- [Hand Gesture Recognition]
-- [Indoor Depth Estimation]
+- [Hand Gesture Recognition]()
+- [Indoor Depth Estimation]()
 
 
