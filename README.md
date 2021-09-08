@@ -106,8 +106,7 @@ To add your own inference module to this project, you need:
     > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
 ## Available Modules
-A list of currently available modules
-### Objection Detection
+A list of integrated modules
 - [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) <br>
 - [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) <br>
 - [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee) <br>
