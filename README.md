@@ -7,15 +7,14 @@ This project was created while keeping in mind of modularity and fast prototype 
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
 [Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
 [📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
-[📓 HiFly Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)<br>
-
+[HiFly PID Tracker](https://www.youtube.com/watch?v=Gix8SquAKGM&t=2s)<br>
 
 ### Hardware Requirements
 - [Atlas 200 DK](https://e.huawei.com/ph/products/cloud-computing-dc/atlas/atlas-200)
 - [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
 - Wireless Router (TP-Link TL-WR902AC)
 
-**[HiFly Wiki](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)**
+📓**[HiFly Wiki](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)**
 - [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
 - [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
 - [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
