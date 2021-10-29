@@ -63,6 +63,17 @@ class ModelProcessor(BaseProcessor):
         self._tmp_file = "../../data/tmp.jpg"
         self._image_info = self.construct_image_info()
 
+    @property
+    def tmp_save_fpath(self):
+        return self._tmp_file
+    
+    @tmp_save_fpath.setter
+    def tmp_save_fpath(self, new_save_path):
+        new_path_to_file = "/".join(new_save_path.split("/")[0:-1])
+        if not os.path.exists(new_path_to_file):
+            raise ValueError("New tmp path is not valid.")
+        self._tmp_file = new_save_path
+
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
         infer_output = self.model.execute([preprocessed, self._image_info])

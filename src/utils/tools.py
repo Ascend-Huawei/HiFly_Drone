@@ -1,3 +1,4 @@
+import acl
 import sys
 import os
 from importlib import import_module
@@ -36,3 +37,9 @@ def init_presenter_server():
     if chan is None:
         raise Exception("Open presenter channel failed")
     return chan
+
+def get_acl_rt_mem_info():
+    for i in range(10):
+        free, total, ret = acl.rt.get_mem_info(i)
+        print(f"({i}) free, totoal, ret: ", free, total, ret)
+
