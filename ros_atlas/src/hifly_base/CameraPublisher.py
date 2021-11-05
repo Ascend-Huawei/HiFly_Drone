@@ -14,42 +14,42 @@ from utils.uav_utils import connect_uav
 
 
 class CameraPublisher:
-    """CameraPublisher ROS node for publishing drone video stream 
+    """CameraPublisher node for publishing drone video stream 
     Accepts an initialized UAV object and initializes a ROS Publisher node to forward live-frames
     from drone as message data to /TelloDrone/image_raw Topic.
-    @params:uav     initialized TelloUAV object
-    @param:fps      rate (Hz) at which to read (and publish) the data from camera 
-    @param:qsize    size of outgoing message queue
-
-    @type:uav       TelloUAV
-    @type:fps       int
-    @type:qsize     
+    @params:
+        uav     initialized TelloUAV object.                                        @type:TelloUAV
+        fps      rate (Hz) at which to read (and publish) the data from camera      @type:Int 
+        qsize    size of outgoing message queue                                     @type:Int
+    
+    Returns:
+        CameraPublisher node.
     """
-
-    def __init__(self, fps=15, qsize=1):
-        # self._uav = uav
+    def __init__(self, uav=None, fps=30, qsize=1):
+        self._uav = uav
         self._qsize = qsize
         self._fps = fps
+
         rospy.init_node("uav_cam", anonymous=True)
         rospy.loginfo("CameraPublisher initializing...")
         self.cam_data_topic = "/tello/cam_data_raw"
         self.cam_info_topic = "/tello/cam_info"
-        self._cam_data_pub = rospy.Publisher(self.cam_data_topic, Image, queue_size=1)
-        self._cam_info_pub = rospy.Publisher(self.cam_info_topic, CameraInfo, queue_size=1)
-        self._rate = rospy.Rate(30)
+        self._cam_data_pub = rospy.Publisher(self.cam_data_topic, Image, queue_size=self._qsize)
+        self._cam_info_pub = rospy.Publisher(self.cam_info_topic, CameraInfo, queue_size=self._qsize)
+        self._rate = rospy.Rate(self._fps)
         self.cvb = CvBridge()
 
-    @property
-    def fps(self):
-        return self._fps
+    # @property
+    # def fps(self):
+    #     return self._fps
 
-    @fps.setter
-    def fps(self, new_fps):
-        if new_fps < 1:
-            raise ValueError("FPS cannot be less than 1.")
-        else:
-            self._fps = new_fps
-            self._rate = rospy.Rate(self._fps)
+    # @fps.setter
+    # def fps(self, new_fps):
+    #     if new_fps < 1:
+    #         raise ValueError("FPS cannot be less than 1.")
+    #     else:
+    #         self._fps = new_fps
+    #         self._rate = rospy.Rate(self._fps)
 
     def build_cam_info(self):
         """Builds Tello Cam Info
@@ -75,6 +75,7 @@ class CameraPublisher:
         return cam_info 
 
     def start_publish(self):
+        """Main loop. Connects to the TelloUAV and publishes video to topic."""
         # self._uav.streamon() 
         
         # Test: Replace still frame with video
@@ -90,7 +91,8 @@ class CameraPublisher:
                 print("Frame is None or return code error")
                 break
             try:
-                img_msg = self.cvb.cv2_to_imgmsg(image_data, "passthrough")
+                img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+                img_msg = self.cvb.cv2_to_imgmsg(img_msg, "rgb8")
                 img_msg.header.stamp = rospy.Time.now()
 
                 cam_info_msg = self.build_cam_info()
@@ -108,10 +110,10 @@ class CameraPublisher:
 
 if __name__ == "__main__":
     # uav = connect_uav()
-    parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
-    parser.add_argument("--fps", default=15, type=int, help='Camera publisher FPS (default: 15)')
-    args = parser.parse_args()
 
+    parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
+    parser.add_argument("--fps", default=30, type=int, help='Camera publisher FPS (default: 15)')
+    args = parser.parse_args()
     fps = args.fps
 
     imgPub = CameraPublisher(fps=fps)
