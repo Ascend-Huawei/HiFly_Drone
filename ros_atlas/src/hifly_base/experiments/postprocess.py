@@ -1,114 +1,110 @@
-"""
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
 import acl
+import pickle
 import os
 import cv2
-import numpy as np
+from queue import Queue
 import sys
+import numpy as np
 import time
-from model_processors.BaseProcessor import BaseProcessor
 
+sys.path.append("../../../../src")
 sys.path.append("../../../../src/lib")
-from atlas_utils.resource_list import resource_list
+
+# from model_processors.FaceDetectionProcessor import ModelProcessor
+from utils.tools import load_model_processor
+from utils.params import params
+
+import rospy
+from sensor_msgs.msg import Image, CameraInfo
+from custom_ros_msgs.msg import FloatArray, FloatArrays, FaceDetection
+from cv_bridge import CvBridge, CvBridgeError
+import message_filters
 
 
-class ModelProcessor(BaseProcessor):
-    def __init__(self, params):
-        super().__init__(params)
+def img_callback(imgmsg):
+    """Either postprocess in callback or send to queue and do it in main thread
+    PROBLEM: postprocess in callback -> remove postprocess code from ModelProcessor 
+    """
+    global is_first_cb
+    global last_cb_time
+    try:
+        cb_time = rospy.get_time()
+        if not is_first_cb:
+            time_since_last_cb = rospy.get_time() - last_cb_time
+            print(time_since_last_cb)
+            time_bw_cb.append(time_since_last_cb)
+        is_first_cb = False
+        last_cb_time = cb_time
         
-        # parameters for preprocessing
-        self.ih, self.iw = (params['camera_height'], params['camera_width'])
-        self.h, self.w = params['model_height'], params['model_width']
-        self.scale = min(self.w / self.iw, self.h / self.ih)
-        self.nw = int(self.iw * self.scale)
-        self.nh = int(self.ih * self.scale)
+        # rgb_img = CvBridge().imgmsg_to_cv2(imgmsg)
+        return CvBridge().imgmsg_to_cv2(imgmsg)
+        # if not message_queue.full():
+        #     message_queue.put(rgb_img)
+        #     rospy.loginfo("Image message put to queue")
 
-        # parameters for postprocessing
-        self.image_shape = [params['camera_height'], params['camera_width']]
-        self.model_shape = [self.h, self.w]
-        self.num_classes = 1
-        self.anchors = self.get_anchors()
+    except CvBridgeError as cvb_err:
+        raise cvb_err 
+
+def format_msg(msg):
+    """Deconstructure message of @type:FloatArrays to a set of np.arrays"""
+    array_1 = np.reshape(np.array(msg.array1.list), (1, 13, 13, 18))
+    array_2 = np.reshape(np.array(msg.array2.list), (1, 26, 26, 18))
+    array_3 = np.reshape(np.array(msg.array3.list), (1, 52, 52, 18))
+    return array_1, array_2, array_3
+
+def inf_res_callback(inf_msg):
+    """Callback function to inf_res Subscriber. Deconstructure data from message and reformat to corresponding numpy.ndarray shape
+    Exmaple: inf_res     List[np.ndarray, np.ndarray, np.ndarray]
+                + first element     ndarray (1, 13, 13, 18)
+                + second element    ndarray (1, 26, 26, 18)
+                + third element     ndarray (1, 52, 52, 18)
+
+    @param:inf_res      inf_res message from /face_detection/inf_res            @type:FloatArrays
+    """
+    global inf_res
+    arr_1, arr_2, arr_3 = format_msg(inf_msg)
+    inf_res = [arr_1, arr_2, arr_3]
+    rospy.loginfo(f"@inf_res_cb: {type(inf_res)}, {len(inf_res)}")
+
+    return inf_res
+
+# def ts_callback(img_msg, inf_msg):
+#     rospy.loginfo(f"@ts_callback img_msg.stamp={img_msg.header.stamp} inf_msg.stamp={inf_msg.header.stamp}")
+#     cv2_img = img_callback(img_msg)       # convert Image to cv2 and put to queue
+#     inf_res = inf_res_callback(inf_msg)   # format FloatArrays type into expected inf_res format
+
+#     if not message_queue.full():
+#         data = (rgb_img, inf_res)
+#         message_queue.put(rgb_img)
+#         rospy.loginfo("Put to message_queue")
+#     else:
+#         rospy.loginfo("message_queue full")
         
-    def release_acl(self):
-        print("acl resource release all resource")
-        resource_list.destroy()
-        if self._acl_resource.stream:
-            print("acl resource release stream")
-            acl.rt.destroy_stream(self._acl_resource.stream)
+# def unpickle():
+#     with open("inf_res.pkl", "rb") as pickle_f:
+#         try:
+#             inf_res = pickle.load(pickle_f)
+#             return inf_res
+#         except EOFError as err:
+#             raise err
 
-        if self._acl_resource.context:
-            print("acl resource release context")
-            acl.rt.destroy_context(self._acl_resource.context)
 
-        print("Reset acl device ", self._acl_resource.device_id)
-        acl.rt.reset_device(self._acl_resource.device_id)
-        acl.finalize()
-        print("Release acl resource success")
+"""
+Ripping out Postprocess from FaceDetection
+"""
+def get_anchors():
+    """return anchors
 
-    def predict(self, frame):
-        preprocessed = self.preprocess(frame)
-        outputs = self.model.execute([preprocessed])
-        
-        postprocess_start = time.process_time()
-        result = self.postprocess(frame, outputs)
-        print(f"@predict.postprocess = {time.process_time() - postprocess_start}")
-        return result
+    Returns:
+        [ndarray]: anchors array
+    """
+    anchors = np.array([[10.,13.],  [16.,30.],  [33.,23.],  [30.,61.],  [62.,45.],  [59.,119.],  [116.,90.],  [156.,198.],  [373.,326.]])
+    return anchors
 
-    def preprocess(self, frame):
-        """preprocess frame from drone"""
-        # preprocessing: resize and paste input image to a new image with size 416*416
-        img = np.array(frame, dtype='float32')
-        img_resize = cv2.resize(img, (self.nw, self.nh), interpolation=cv2.INTER_CUBIC)
-        img_new = np.ones((416, 416, 3), np.float32) * 128
-        img_new[(self.h - self.nh) // 2: ((self.h - self.nh) // 2 + self.nh),
-                (self.w - self.nw) // 2: (self.w - self.nw) // 2 + self.nw, :] = img_resize[:, :, :]
-        img_new = img_new / 255.
-        return img_new
-        
-    def postprocess(self, frame, outputs):
-        yolo_eval_start = time.process_time()
-        box_axis, box_score = yolo_eval(
-            outputs, self.anchors, self.num_classes, self.image_shape)
-        yolo_eval_end = time.process_time() - yolo_eval_start
-        nparryList, boxList = get_box_img(frame, box_axis)
-
-        if len(nparryList) > 0:
-            for box in boxList:
-                cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
-
-        print(f"\n####################################################################")
-        print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
-        # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
-        # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
-
-        return frame, yolo_eval_end
-    
-    def get_anchors(self):
-        """return anchors
-
-        Returns:
-            [ndarray]: anchors array
-        """
-        anchors = np.array([[10.,13.],  [16.,30.],  [33.,23.],  [30.,61.],  [62.,45.],  [59.,119.],  [116.,90.],  [156.,198.],  [373.,326.]])
-        return anchors
-  
-    
 def sigmoid(x):
     """sigmoid"""
     x = x.astype("float32")
     return 1 / (1 + np.exp(-x))
-
 
 def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     """Convert final layer features to bounding box parameters."""
@@ -151,7 +147,6 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
         ret["box_class_probs"] = box_class_probs
     return ret
 
-
 def yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape):
     """Get corrected boxes"""
     box_yx = box_xy[..., ::-1]
@@ -182,7 +177,6 @@ def yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape):
 
     return boxes
 
-
 def yolo_boxes_and_scores(feats, anchors, num_classes, input_shape, image_shape):
     """Process Conv layer output"""
     heads = yolo_head(feats, anchors, num_classes, input_shape)
@@ -192,7 +186,6 @@ def yolo_boxes_and_scores(feats, anchors, num_classes, input_shape, image_shape)
     box_scores = np.reshape(box_scores, [-1, num_classes])
 
     return (boxes, box_scores)
-
 
 def nms(bounding_boxes, confidence_score, threshold):
     """non maximum suppression for filter boxes"""
@@ -260,7 +253,6 @@ def nms(bounding_boxes, confidence_score, threshold):
 
     return picked_boxes, picked_score
 
-
 def yolo_eval(yolo_outputs, anchors, num_classes, image_shape, score_threshold=.5, iou_threshold=.45):
     """
     Obtain predicted boxes axis and corresponding scores
@@ -310,7 +302,6 @@ def yolo_eval(yolo_outputs, anchors, num_classes, image_shape, score_threshold=.
 
     return box, score
 
-
 def get_box_img(image, box_axis):
     """
     Pack detected head area and corresponding location in the source image for WHENet
@@ -348,3 +339,103 @@ def get_box_img(image, box_axis):
             image[top_modified:bottom_modified, left_modified:right_modified])
 
     return nparryList, boxList
+
+def postprocess(frame, outputs):
+    yolo_eval_start = time.process_time()
+    anchors = get_anchors()
+    image_shape = [720, 960]
+    box_axis, box_score = yolo_eval(outputs, anchors, 1, image_shape)
+    yolo_eval_end = time.process_time() - yolo_eval_start
+    nparryList, boxList = get_box_img(frame, box_axis)
+
+    if len(nparryList) > 0:
+        for box in boxList:
+            cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
+
+    print(f"\n####################################################################")
+    print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
+    # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
+    # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
+
+    return frame, yolo_eval_end
+
+def fd_callback(fd_msg):
+    # rospy.loginfo(f"dir(fd_msg): \n{dir(fd_msg)}")
+    global postprocess_pub, rate
+
+    arr_1, arr_2, arr_3 = format_msg(fd_msg)
+    inf_res = [arr_1, arr_2, arr_3]
+    frame = CvBridge().imgmsg_to_cv2(fd_msg.img)
+
+    postprocessed, yolo_eval_end = postprocess(frame, inf_res)
+
+    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed)
+
+    postprocess_pub.publish(postprocessed)
+    rate.sleep()
+    rospy.loginfo(f"Postprocessed and published")
+
+def init_postprocessor():
+    rospy.init_node("postprocessor")
+    # img_sub = message_filters.Subscriber("/tello/cam_data_raw", Image, queue_size=1, buff_size=2**24)
+    # inf_sub = message_filters.Subscriber("/face_detection/inf_res", FloatArrays, queue_size=1, buff_size=2**24)
+    # ts = message_filters.TimeSynchronizer([img_sub, inf_sub], 1)
+    # ts.registerCallback(ts_callback)
+    face_detection_sub = rospy.Subscriber("/face_detection/inf_res", FaceDetection, fd_callback, queue_size=1, buff_size=2**24)
+
+def shutdown():
+    avg_duration = sum(yolo_eval_duration) / counter
+    avg_time_bw_callback = sum(time_bw_cb) / len(time_bw_cb)
+    rospy.loginfo(f"Average yolo_eval_duration: {avg_duration}")
+    rospy.loginfo(f"Average interval b/w callbacks: {avg_time_bw_callback}")
+
+
+if __name__ == "__main__":
+    # mp, mp_info = load_model_processor("face_detection")
+    # mp = mp(mp_info)
+
+    inf_res = None
+    # image_queue = Queue(maxsize=1)
+    message_queue = Queue(maxsize=1)
+    counter = 0
+
+    yolo_eval_duration = list()
+    time_bw_cb = list()
+    last_cb_time = 0
+    is_first_cb = True
+
+    rospy.init_node("postprocessor")
+    face_detection_sub = rospy.Subscriber("/face_detection/inf_res", FaceDetection, fd_callback, queue_size=1, buff_size=2**24)
+    postprocess_pub = rospy.Publisher("/postprocess/superimpose", Image, queue_size=1)
+    rate = rospy.Rate(30)
+    rospy.on_shutdown(shutdown)
+
+    # rospy.init_node("postprocessor")
+    # img_sub = rospy.Subscriber("/tello/cam_data_raw", Image, callback=img_callback, callback_args=(inf_res), queue_size=1, buff_size=2**24)
+    # inf_sub = rospy.Subscriber("/face_detection/inf_res", FloatArrays, callback=inf_res_callback, queue_size=1, buff_size=2**24)
+    rospy.spin()
+    # while not rospy.is_shutdown():
+    #     try: 
+    #         # print(image_queue.qsize())
+    #         if not message_queue.empty():
+    #             image_data = message_queue.get()
+
+    #             postprocessed, yolo_eval_end = mp.postprocess(image_data, inf_res)
+                
+    #             # Measuring callback rate
+    #             yolo_eval_duration.append(yolo_eval_end)
+
+    #             imgmsg = CvBridge().cv2_to_imgmsg(postprocessed, encoding="rgb8")
+    #             print(f"[{counter}]: Publish reuult to topic: /acl_inference/results. MessageType::{type(imgmsg)}")
+    #             pub.publish(imgmsg)
+    #             counter += 1
+    #             pub_rate.sleep()
+
+    #         else:
+    #             print("Message queue empty")
+    #             continue
+
+    #     except KeyboardInterrupt as e:
+    #         raise e
+    #     except rospy.ROSInterruptException:
+    #         rospy.loginfo("There was an exception with postprocess.")
