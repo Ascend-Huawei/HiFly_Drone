@@ -10,7 +10,6 @@ import time
 sys.path.append("../../../../src")
 sys.path.append("../../../../src/lib")
 
-# from model_processors.FaceDetectionProcessor import ModelProcessor
 from utils.tools import load_model_processor
 from utils.params import params
 
@@ -18,15 +17,16 @@ import rospy
 from sensor_msgs.msg import Image, CameraInfo
 from custom_ros_msgs.msg import FloatArray, FloatArrays, FaceDetection
 from cv_bridge import CvBridge, CvBridgeError
-import message_filters
+# import message_filters
+from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
+
 
 
 def img_callback(imgmsg):
     """Either postprocess in callback or send to queue and do it in main thread
     PROBLEM: postprocess in callback -> remove postprocess code from ModelProcessor 
     """
-    global is_first_cb
-    global last_cb_time
+    global is_first_cb, last_cb_time
     try:
         cb_time = rospy.get_time()
         if not is_first_cb:
@@ -51,43 +51,6 @@ def format_msg(msg):
     array_2 = np.reshape(np.array(msg.array2.list), (1, 26, 26, 18))
     array_3 = np.reshape(np.array(msg.array3.list), (1, 52, 52, 18))
     return array_1, array_2, array_3
-
-def inf_res_callback(inf_msg):
-    """Callback function to inf_res Subscriber. Deconstructure data from message and reformat to corresponding numpy.ndarray shape
-    Exmaple: inf_res     List[np.ndarray, np.ndarray, np.ndarray]
-                + first element     ndarray (1, 13, 13, 18)
-                + second element    ndarray (1, 26, 26, 18)
-                + third element     ndarray (1, 52, 52, 18)
-
-    @param:inf_res      inf_res message from /face_detection/inf_res            @type:FloatArrays
-    """
-    global inf_res
-    arr_1, arr_2, arr_3 = format_msg(inf_msg)
-    inf_res = [arr_1, arr_2, arr_3]
-    rospy.loginfo(f"@inf_res_cb: {type(inf_res)}, {len(inf_res)}")
-
-    return inf_res
-
-# def ts_callback(img_msg, inf_msg):
-#     rospy.loginfo(f"@ts_callback img_msg.stamp={img_msg.header.stamp} inf_msg.stamp={inf_msg.header.stamp}")
-#     cv2_img = img_callback(img_msg)       # convert Image to cv2 and put to queue
-#     inf_res = inf_res_callback(inf_msg)   # format FloatArrays type into expected inf_res format
-
-#     if not message_queue.full():
-#         data = (rgb_img, inf_res)
-#         message_queue.put(rgb_img)
-#         rospy.loginfo("Put to message_queue")
-#     else:
-#         rospy.loginfo("message_queue full")
-        
-# def unpickle():
-#     with open("inf_res.pkl", "rb") as pickle_f:
-#         try:
-#             inf_res = pickle.load(pickle_f)
-#             return inf_res
-#         except EOFError as err:
-#             raise err
-
 
 """
 Ripping out Postprocess from FaceDetection
@@ -343,7 +306,10 @@ def get_box_img(image, box_axis):
 def postprocess(frame, outputs):
     yolo_eval_start = time.process_time()
     anchors = get_anchors()
-    image_shape = [720, 960]
+    # image_shape = [720, 960]
+    # image_shape = [1080, 1920]
+    image_shape = [540, 960]
+
     box_axis, box_score = yolo_eval(outputs, anchors, 1, image_shape)
     yolo_eval_end = time.process_time() - yolo_eval_start
     nparryList, boxList = get_box_img(frame, box_axis)
@@ -361,48 +327,49 @@ def postprocess(frame, outputs):
 
 def fd_callback(fd_msg):
     # rospy.loginfo(f"dir(fd_msg): \n{dir(fd_msg)}")
-    global postprocess_pub, rate
+    global message_queue
+    if not message_queue.full():
+        try:
+            # only put msg to queue
+            message_queue.put(fd_msg)
 
-    arr_1, arr_2, arr_3 = format_msg(fd_msg)
-    inf_res = [arr_1, arr_2, arr_3]
-    frame = CvBridge().imgmsg_to_cv2(fd_msg.img)
+            # arr_1, arr_2, arr_3 = format_msg(fd_msg)
+            # inf_res = [arr_1, arr_2, arr_3]
+            # frame = CvBridge().imgmsg_to_cv2(fd_msg.img)
 
-    postprocessed, yolo_eval_end = postprocess(frame, inf_res)
+            # postprocessed, yolo_eval_end = postprocess(frame, inf_res)
+            # # cv2.imwrite("postprocessed_tmp.png", postprocessed)
 
-    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed)
-
-    postprocess_pub.publish(postprocessed)
-    rate.sleep()
-    rospy.loginfo(f"Postprocessed and published")
+            # processed_queue.put(postprocessed)
+            # rospy.loginfo("Put to queue")
+        except CvBridgeError as err:
+            rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
+            raise err
 
 def init_postprocessor():
     rospy.init_node("postprocessor")
-    # img_sub = message_filters.Subscriber("/tello/cam_data_raw", Image, queue_size=1, buff_size=2**24)
-    # inf_sub = message_filters.Subscriber("/face_detection/inf_res", FloatArrays, queue_size=1, buff_size=2**24)
-    # ts = message_filters.TimeSynchronizer([img_sub, inf_sub], 1)
-    # ts.registerCallback(ts_callback)
     face_detection_sub = rospy.Subscriber("/face_detection/inf_res", FaceDetection, fd_callback, queue_size=1, buff_size=2**24)
 
 def shutdown():
-    avg_duration = sum(yolo_eval_duration) / counter
-    avg_time_bw_callback = sum(time_bw_cb) / len(time_bw_cb)
-    rospy.loginfo(f"Average yolo_eval_duration: {avg_duration}")
-    rospy.loginfo(f"Average interval b/w callbacks: {avg_time_bw_callback}")
+    # avg_duration = sum(yolo_eval_duration) / counter
+    # avg_time_bw_callback = sum(time_bw_cb) / len(time_bw_cb)
+    # rospy.loginfo(f"Average yolo_eval_duration: {avg_duration}")
+    # rospy.loginfo(f"Average interval b/w callbacks: {avg_time_bw_callback}")
+    rospy.loginfo(f"Rospy postprocess node shutdown")
+
 
 
 if __name__ == "__main__":
     # mp, mp_info = load_model_processor("face_detection")
     # mp = mp(mp_info)
 
-    inf_res = None
-    # image_queue = Queue(maxsize=1)
-    message_queue = Queue(maxsize=1)
+    message_queue = Queue(maxsize=5)
     counter = 0
-
-    yolo_eval_duration = list()
-    time_bw_cb = list()
-    last_cb_time = 0
-    is_first_cb = True
+    bridge = CvBridge()
+    # yolo_eval_duration = list()
+    # time_bw_cb = list()
+    # last_cb_time = 0
+    # is_first_cb = True
 
     rospy.init_node("postprocessor")
     face_detection_sub = rospy.Subscriber("/face_detection/inf_res", FaceDetection, fd_callback, queue_size=1, buff_size=2**24)
@@ -410,32 +377,31 @@ if __name__ == "__main__":
     rate = rospy.Rate(30)
     rospy.on_shutdown(shutdown)
 
-    # rospy.init_node("postprocessor")
-    # img_sub = rospy.Subscriber("/tello/cam_data_raw", Image, callback=img_callback, callback_args=(inf_res), queue_size=1, buff_size=2**24)
-    # inf_sub = rospy.Subscriber("/face_detection/inf_res", FloatArrays, callback=inf_res_callback, queue_size=1, buff_size=2**24)
-    rospy.spin()
-    # while not rospy.is_shutdown():
-    #     try: 
-    #         # print(image_queue.qsize())
-    #         if not message_queue.empty():
-    #             image_data = message_queue.get()
+    while not rospy.is_shutdown():
+        if not message_queue.empty():
+            try:
+                message = message_queue.get()
+            
+                arr_1, arr_2, arr_3 = format_msg(message)
+                inf_res = [arr_1, arr_2, arr_3]
+                frame = CvBridge().imgmsg_to_cv2(message.img)
+                postprocessed, yolo_eval_end = postprocess(frame, inf_res)
 
-    #             postprocessed, yolo_eval_end = mp.postprocess(image_data, inf_res)
-                
-    #             # Measuring callback rate
-    #             yolo_eval_duration.append(yolo_eval_end)
-
-    #             imgmsg = CvBridge().cv2_to_imgmsg(postprocessed, encoding="rgb8")
-    #             print(f"[{counter}]: Publish reuult to topic: /acl_inference/results. MessageType::{type(imgmsg)}")
-    #             pub.publish(imgmsg)
-    #             counter += 1
-    #             pub_rate.sleep()
-
-    #         else:
-    #             print("Message queue empty")
-    #             continue
-
-    #     except KeyboardInterrupt as e:
-    #         raise e
-    #     except rospy.ROSInterruptException:
-    #         rospy.loginfo("There was an exception with postprocess.")
+                postprocessed = bridge.cv2_to_imgmsg(postprocessed, "rgb8")
+                postprocess_pub.publish(postprocessed)
+                rospy.loginfo(f"[{counter}] Postprocessed and published")
+                counter += 1
+                rate.sleep()
+            except ROSSerializationException as err:
+                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
+                raise err
+            except ROSException as err:
+                raise err
+            except ROSInterruptException as err:
+                rospy.loginfo("ROS Interrupt.")
+            except KeyboardInterrupt as err:
+                rospy.loginfo("ROS Interrupt.")
+        else:
+            # print("queue is empty")
+            continue
+        

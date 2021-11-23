@@ -75,6 +75,10 @@ if __name__ == "__main__":
             face_detection_msg.array2.list = inf_res[1].flatten().tolist()
             face_detection_msg.array3.list = inf_res[2].flatten().tolist()
 
+            # See type for preprocessed
+            # print(f"preprocessed type: ", type(preprocessed))
+            # print(f"original frame type: ", type(image))
+
             face_detection_msg.img = CvBridge().cv2_to_imgmsg(image)
 
             print(f"[{counter}]: Publish inf_res to topic: /face_detection/inf_res")

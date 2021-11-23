@@ -1,7 +1,3 @@
-import rospy
-import rosbag
-from sensor_msgs.msg import Image, CameraInfo
-from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 import gc
 import cv2
@@ -11,6 +7,10 @@ import argparse
 sys.path.append("../../../src")
 # sys.path.append("../../../src/lib")
 
+import rospy
+from sensor_msgs.msg import Image, CameraInfo
+from cv_bridge import CvBridge, CvBridgeError
+from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
 #from utils.uav_utils import connect_uav
 
 
@@ -30,48 +30,27 @@ class CameraPublisher:
         self._uav = uav
         self._qsize = qsize
         self._fps = fps
+        self._pub_counter = 0
 
-        rospy.init_node("uav_cam", anonymous=True)
-        rospy.loginfo("CameraPublisher initializing...")
-        self.cam_data_topic = "/tello/cam_data_raw"
-        self.cam_info_topic = "/tello/cam_info"
-        self._cam_data_pub = rospy.Publisher(self.cam_data_topic, Image, queue_size=self._qsize)
-        self._cam_info_pub = rospy.Publisher(self.cam_info_topic, CameraInfo, queue_size=self._qsize)
-        self._rate = rospy.Rate(self._fps)
-        self.cvb = CvBridge()
-
+        try:
+            rospy.init_node("uav_cam", anonymous=True)
+            rospy.loginfo("initializing CameraPublisher node.")
+            self.cam_data_topic = "/tello/cam_data_raw"
+            self.cam_info_topic = "/tello/cam_info"
+            self._cam_data_pub = rospy.Publisher(self.cam_data_topic, Image, queue_size=self._qsize)
+            self._cam_info_pub = rospy.Publisher(self.cam_info_topic, CameraInfo, queue_size=self._qsize)
+            self._rate = rospy.Rate(self._fps)
+            self.cvb = CvBridge()
+        except ROSSerializationException as e:
+            rospy.logerr("Ran into exception when initializing uav_cam node.")
+            raise e
         rospy.on_shutdown(self.shutdown)
 
-    # def build_cam_info(self):
-    #     """Builds Tello Cam Info
-    #     Read more: http://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/CameraInfo.html
-        
-    #     [TODO] - should accept uav.drone_info to build cam_info
-    #         uav.drone_info has: cam HxW, drone fov, 
-    #     """
-    #     cam_info = CameraInfo()
-    #     # cam_info.header = None
-    #     cam_info.width = 960
-    #     cam_info.height = 720
-    #     cam_info.distortion_model = 'plumb_bob'
-    #     cx, cy = cam_info.width // 2, cam_info.height // 2
-    #     tello_fov = 82.6
-    #     fx = cam_info.width / (
-    #         2.0 * math.tan(tello_fov * math.pi / 360.0))
-    #     fy = fx
-    #     cam_info.K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
-    #     cam_info.D = [0, 0, 0, 0, 0]
-    #     cam_info.R = [1.0, 0, 0, 0, 1.
-    #     cam_info.P = [fx, 0, cx, 0, 0, fy, cy, 0, 0, 0, 1.0, 0]
-
-    #     return cam_info 
-
     def start_publish(self):
-        # Test: Replace still frame with video
         cap = cv2.VideoCapture("/home/HwHiAiUser/HiFly_Drone/data/20210809_141017.mp4")
-        print(f"CameraPublisher - Default video read FPS={round(cap.get(cv2.CAP_PROP_FPS), 3)}")
-    
-        if not cap.isOpened(): print("Error opening video file")
+        rospy.loginfo(f"CameraPublisher - Default video read FPS={round(cap.get(cv2.CAP_PROP_FPS), 3)}")
+        if not cap.isOpened(): 
+            rospy.signal_shutdown("Shutting down CameraPuyblisher. Reason: Error opening video file.")
         
         while not rospy.is_shutdown() and cap.isOpened():
             # image_data = self._uav.get_frame_read().frame
@@ -83,24 +62,36 @@ class CameraPublisher:
 
             # [REMOVE] test if reducing resolution can increase performance: halving each dimension
             image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
+
             try:
+                # rospy.loginfo(f"Static image shape = {image_data.shape}")
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
                 img_msg = self.cvb.cv2_to_imgmsg(img_msg, "rgb8")
                 img_msg.header.stamp = rospy.Time.now()
 
                 self._cam_data_pub.publish(img_msg)
-                print("Image message & Cam Info published. ImageMessage: {}".format(type(img_msg)))
+                rospy.loginfo(f"[{self._pub_counter}] Published ImageMessage")
+                self._pub_counter += 1
                 self._rate.sleep()
 
             except CvBridgeError as err:
-                print(err)
+                rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
+                raise err
+            except ROSSerializationException as err:
+                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
+                raise err
+            except ROSException as err:
+                raise err
+            except ROSInterruptException as err:
+                rospy.loginfo("ROS Interrupt.")
+            except KeyboardInterrupt as err:
+                rospy.loginfo("ROS Interrupt.")
 
     def shutdown(self):
         """Shutdown hook"""
         rospy.loginfo("CamerPublisher node shutdown...")
         rospy.loginfo(f"Release resources...")
         gc.collect()
-
 
 if __name__ == "__main__":
     # uav = connect_uav()
