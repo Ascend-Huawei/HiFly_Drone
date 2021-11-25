@@ -40,7 +40,7 @@ class CameraPublisher:
             except Exception as err:
                 raise err
         try:
-            rospy.init_node("uav_cam", anonymous=True)
+            rospy.init_node("uav_cam")
             rospy.loginfo("initializing CameraPublisher node.")
             self._cam_data_pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
             self._rate = rospy.Rate(30)

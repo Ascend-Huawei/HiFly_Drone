@@ -39,6 +39,7 @@ def init_presenter_server():
     return chan
 
 def get_acl_rt_mem_info():
+    """Prints Acl runtime memory info"""
     for i in range(10):
         free, total, ret = acl.rt.get_mem_info(i)
         print(f"({i}) free, totoal, ret: ", free, total, ret)

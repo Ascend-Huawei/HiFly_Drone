@@ -24,8 +24,8 @@ from atlas_utils.resource_list import resource_list
 
 
 class ModelProcessor(BaseProcessor):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, params, image_shape=None, load_model=True):
+        super().__init__(params=params, load_model=load_model)
         
         # parameters for preprocessing
         self.ih, self.iw = (params['camera_height'], params['camera_width'])
@@ -35,7 +35,7 @@ class ModelProcessor(BaseProcessor):
         self.nh = int(self.ih * self.scale)
 
         # parameters for postprocessing
-        self.image_shape = [params['camera_height'], params['camera_width']]
+        self.image_shape = image_shape if image_shape is not None else [params['camera_height'], params['camera_width']]
         self.model_shape = [self.h, self.w]
         self.num_classes = 1
         self.anchors = self.get_anchors()
@@ -78,8 +78,7 @@ class ModelProcessor(BaseProcessor):
         
     def postprocess(self, frame, outputs):
         yolo_eval_start = time.process_time()
-        box_axis, box_score = yolo_eval(
-            outputs, self.anchors, self.num_classes, self.image_shape)
+        box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         yolo_eval_end = time.process_time() - yolo_eval_start
         nparryList, boxList = get_box_img(frame, box_axis)
 
