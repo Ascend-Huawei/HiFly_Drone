@@ -22,12 +22,12 @@ from model_processors.BaseProcessor import BaseProcessor
 
 
 class ModelProcessor(BaseProcessor):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, params, process_only=False):
+        super().__init__(params=params, process_only=process_only)
         
         # parameters for poseprocessing
         self.ih, self.iw = (params['camera_height'], params['camera_width'])
-        
+
 
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
@@ -48,7 +48,7 @@ class ModelProcessor(BaseProcessor):
         img = np.expand_dims(img, axis=0)
         return img.astype(np.float32).copy()
         
-    def postprocess(self, outputs):
+    def postprocess(self, outputs, frame):
         """postprocess frame from drone"""
         min_depth = 1e-3
         max_depth = 10
@@ -57,15 +57,17 @@ class ModelProcessor(BaseProcessor):
         final[final > max_depth] = max_depth
         final[np.isinf(final)] = max_depth
         final[np.isnan(final)] = min_depth
-        final = cv2.resize(final.squeeze(), (self.iw, self.ih), interpolation = cv2.INTER_AREA)
+        final = np.float32(cv2.resize(final.squeeze(), (self.iw, self.ih), interpolation=cv2.INTER_AREA))
 
+        return final, None
         # TODO: find better way instead of save & load
         # matplotlib 默认的十色环：”C0”, “C1”, ……，”C9”
-        parent_id = os.getppid()
-        d = f"tmp/{parent_id}"
-        if not os.path.exists(d):
-            os.makedirs(d)
-        filename = f"tmp/{parent_id}/tmp_{os.getpid()}.jpg"
-        plt.imsave(filename, final)
-        return cv2.imread(filename)
+        
+        # parent_id = os.getppid()
+        # d = f"tmp/{parent_id}"
+        # if not os.path.exists(d):
+        #     os.makedirs(d)
+        # filename = f"tmp/{parent_id}/tmp_{os.getpid()}.jpg"
+        # plt.imsave(filename, final)
+        # return cv2.imread(filename)
   

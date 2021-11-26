@@ -1,6 +1,5 @@
-import sys
 import os
-from custom_ros_msgs.msg import FloatArray, FloatArrays, FaceDetection
+from custom_ros_msgs.msg import Float32Array, FaceDetection, AdaBins
 
 
 def validate_paths():
@@ -102,6 +101,7 @@ params = {
                 "model_info": "https://github.com/shariqfarooq123/AdaBins",
                 "camera_width": 960,
                 "camera_height": 720,
+                "pub_message_type": AdaBins
             },
         },
         "other": {

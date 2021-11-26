@@ -1,14 +1,10 @@
-import numpy as np
-import gc
 import cv2
 import sys
-import math
 import argparse
 sys.path.append("../../")
-# sys.path.append("../../../src/lib")
 
 import rospy
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
 from ros_atlas.utils.uav_utils import connect_uav
@@ -28,10 +24,7 @@ class CameraPublisher:
     """
     def __init__(self, uav=None, fps=30, qsize=1):
         self._uav = uav
-        # self._qsize = qsize
-        # self._fps = fps
         self._pub_counter = 0
-        self.bridge = CvBridge()
 
         if self._uav is not None:
             try:
@@ -45,7 +38,7 @@ class CameraPublisher:
             self._cam_data_pub = rospy.Publisher("/tello/cam_data_raw", Image, queue_size=1)
             self._rate = rospy.Rate(30)
 
-        except ROSSerializationException as e:
+        except ROSInitException as e:
             rospy.logerr("Ran into exception when initializing uav_cam node.")
             raise e
             
@@ -71,7 +64,7 @@ class CameraPublisher:
             try:
                 # rospy.loginfo(f"Static image shape = {image_data.shape}")
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-                img_msg = self.bridge.cv2_to_imgmsg(img_msg, "rgb8")
+                img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
                 img_msg.header.stamp = rospy.Time.now()
 
                 self._cam_data_pub.publish(img_msg)
@@ -107,7 +100,7 @@ class CameraPublisher:
             try:
                 # rospy.loginfo(f"Static image shape = {image_data.shape}")
                 img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-                img_msg = self.bridge.cv2_to_imgmsg(img_msg, "rgb8")
+                img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
                 img_msg.header.stamp = rospy.Time.now()
 
                 self._cam_data_pub.publish(img_msg)
@@ -135,12 +128,11 @@ class CameraPublisher:
         gc.collect()
 
 if __name__ == "__main__":
-    # uav = connect_uav()
-    uav = None
+    uav = connect_uav()
     parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
     parser.add_argument("--fps", default=30, type=int, help='Camera publisher FPS (default: 30)')
     args = parser.parse_args()
     fps = args.fps
 
     imgPub = CameraPublisher(uav=uav, fps=fps)
-    imgPub.start_publish()
+    imgPub.start_publish_live()

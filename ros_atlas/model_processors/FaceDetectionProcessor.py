@@ -19,13 +19,14 @@ import sys
 import time
 from model_processors.BaseProcessor import BaseProcessor
 
-sys.path.append("../../../../src/lib")
+sys.path.append("../lib")
+
 from atlas_utils.resource_list import resource_list
 
 
 class ModelProcessor(BaseProcessor):
-    def __init__(self, params, image_shape=None, load_model=True):
-        super().__init__(params=params, load_model=load_model)
+    def __init__(self, params, expected_image_shape=None, process_only=False):
+        super().__init__(params=params, process_only=process_only)
         
         # parameters for preprocessing
         self.ih, self.iw = (params['camera_height'], params['camera_width'])
@@ -35,7 +36,7 @@ class ModelProcessor(BaseProcessor):
         self.nh = int(self.ih * self.scale)
 
         # parameters for postprocessing
-        self.image_shape = image_shape if image_shape is not None else [params['camera_height'], params['camera_width']]
+        self.image_shape = expected_image_shape if expected_image_shape is not None else [params['camera_height'], params['camera_width']]
         self.model_shape = [self.h, self.w]
         self.num_classes = 1
         self.anchors = self.get_anchors()
@@ -76,7 +77,7 @@ class ModelProcessor(BaseProcessor):
         img_new = img_new / 255.
         return img_new
         
-    def postprocess(self, frame, outputs):
+    def postprocess(self, outputs, frame):
         yolo_eval_start = time.process_time()
         box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         yolo_eval_end = time.process_time() - yolo_eval_start

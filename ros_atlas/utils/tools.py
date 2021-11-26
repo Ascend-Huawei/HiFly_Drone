@@ -8,7 +8,6 @@ sys.path.append("../lib")
 sys.path.append("../../")
 
 from ros_atlas.utils.params import params
-from ros_atlas.lib.atlas_utils.presenteragent import presenter_channel
 from ros_atlas.lib.atlas_utils.acl_image import AclImage
 
 def validate_paths():

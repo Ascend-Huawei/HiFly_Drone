@@ -19,14 +19,13 @@ from atlas_utils.acl_resource import AclResource
 from atlas_utils.acl_model import Model
 
 class BaseProcessor:
-    def __init__(self, params, load_model=True):
+    def __init__(self, params, process_only):
         # Initialize ACL Resources
         self.params = params
         self.validate()
         self._model_width = params['model_width']
         self._model_height = params['model_height']
-        if load_model:
-            print("@baseprocessor - load model is true")
+        if not process_only:
             self._acl_resource = AclResource()
             self._acl_resource.init()
             self.model = Model(params['model_path'])
