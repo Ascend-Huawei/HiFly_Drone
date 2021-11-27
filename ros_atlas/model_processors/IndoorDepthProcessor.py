@@ -48,7 +48,7 @@ class ModelProcessor(BaseProcessor):
         img = np.expand_dims(img, axis=0)
         return img.astype(np.float32).copy()
         
-    def postprocess(self, outputs, frame):
+    def postprocess(self, outputs, frame=None):
         """postprocess frame from drone"""
         min_depth = 1e-3
         max_depth = 10
@@ -59,7 +59,7 @@ class ModelProcessor(BaseProcessor):
         final[np.isnan(final)] = min_depth
         final = np.float32(cv2.resize(final.squeeze(), (self.iw, self.ih), interpolation=cv2.INTER_AREA))
 
-        return final, None
+        return final
         # TODO: find better way instead of save & load
         # matplotlib 默认的十色环：”C0”, “C1”, ……，”C9”
         

@@ -18,8 +18,8 @@ from model_processors.BaseProcessor import BaseProcessor
 
 class ModelProcessor(BaseProcessor):
     """acl model wrapper"""
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, params, process_only=False):
+        super().__init__(params, process_only=process_only)
 
     def predict(self, img_original):
         model_input = self.preprocess(img_original)
@@ -33,10 +33,11 @@ class ModelProcessor(BaseProcessor):
         image = image.astype(np.uint8).copy()
         return image
 
-    def postprocess(self, image, resultList, threshold=0.6):
-        num_detections = resultList[0][0].astype(np.int)
-        scores = resultList[2]
-        boxes = resultList[3]
+    def postprocess(self, frame, outputs, threshold=0.6):
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        num_detections = outputs[0][0].astype(np.int)
+        scores = outputs[2]
+        boxes = outputs[3]
         bbox_num = 0
     
         # loop through all the detections and get the confidence and bbox coordinates
@@ -52,13 +53,13 @@ class ModelProcessor(BaseProcessor):
             # the detection confidence and bbox dimensions must be greater than a minimum value to be a valid detection
             if threshold <= det_conf and 1 >= det_conf and bbox_width > 0 and bbox_height > 0:
                 bbox_num += 1
-                xmin = int(round(det_xmin * image.shape[1]))
-                ymin = int(round(det_ymin * image.shape[0]))
-                xmax = int(round(det_xmax * image.shape[1]))
-                ymax = int(round(det_ymax * image.shape[0]))
+                xmin = int(round(det_xmin * frame.shape[1]))
+                ymin = int(round(det_ymin * frame.shape[0]))
+                xmax = int(round(det_xmax * frame.shape[1]))
+                ymax = int(round(det_ymax * frame.shape[0]))
                 
-                cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (255, 0, 0), 4)
             else:
                 continue
 
-        return image
+        return frame

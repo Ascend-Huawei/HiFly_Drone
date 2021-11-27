@@ -20,8 +20,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
 
-sys.path.append("../../")
-from ros_atlas.utils.tools import load_model_processor
+from utils.tools import load_model_processor
 
 
 class BaseInferenceNode:
@@ -34,7 +33,6 @@ class BaseInferenceNode:
         Returns:
             None
         
-        #TODO: add inference rate to params.py dictionary for EACH model
         TODO: Users need to inherit from AciInference and override the construct_ros_msg method
         """
         self.image_queue = Queue(maxsize=5)
@@ -119,8 +117,11 @@ class BaseInferenceNode:
                 raise err
             except ROSInterruptException as err:
                 rospy.loginfo("ROS Interrupt.")
+                raise err
             except KeyboardInterrupt as err:
                 rospy.loginfo("ROS Interrupt.")
+                raise err
+
 
 
     def shutdown(self):
@@ -129,107 +130,3 @@ class BaseInferenceNode:
         rospy.loginfo(f"Release resources...")
         
         self.history["node_end"] = time.time()
-        # average_loop_runtime = self.history["total_loop_time"] / self.counter
-        # average_inference_time = self.history["total_inference_time"] / self.counter
-
-    # parser = argparse.ArgumentParser(description='AclInference Node.')
-    # parser.add_argument('-m', '--model', metavar='MODEL', type=str, default='face_detection', help='Model name (refer to params.py)')
-    # args = parser.parse_args()
-
-    # model_name = args.model
-
-    # inference_node = AclInferenceNode()
-    # model = inference_node.load_model(model_name)
-    # inference_node.init()
-
-    # counter = 0
-
-    # while not rospy.is_shutdown():
-    #     try:
-    #         if not inference_node.image_queue.empty():
-    #             image, timestamp = inference_node.image_queue.get()
-                
-    #             preprocessed = model.preprocess(image)
-    #             model_output = model.model.execute([preprocessed])
-
-    #             detection_msg = FaceDetection()
-    #             detection_msg.header.stamp = rospy.Time.now()
-    #             detection_msg.array1.list = model_output[0].flatten().tolist()
-    #             detection_msg.array2.list = model_output[1].flatten().tolist()
-    #             detection_msg.array3.list = model_output[2].flatten().tolist()
-    #             detection_msg.img = CvBridge().cv2_to_imgmsg(image)
-
-    #             print(f"[{counter}]: Publish model_output to topic: {inference_node.inference_topic}")
-    #             counter += 1
-    #             inference_node.inference_pub.publish(detection_msg)
-    #             inference_node.inference_pub_rate.sleep()
-    #         else:
-    #             rospy.loginfo("Image queue is empty. Check image_callback")
-    #             continue
-
-    #     except CvBridgeError as err:
-    #             rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-    #             raise err
-    #     except ROSSerializationException as err:
-    #         rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-    #         raise err
-    #     except ROSException as err:
-    #         raise err
-    #     except ROSInterruptException as err:
-    #         rospy.loginfo("ROS Interrupt.")
-    #     except KeyboardInterrupt as err:
-    #         rospy.loginfo("ROS Interrupt.")
-        # rospy.loginfo(f"[Including rate.sleep] Published {self.counter} frames in {program_duration}s -> {self.counter / program_duration} FPS.")
-        # rospy.loginfo(f"[Excluding rate.sleep] Average time (s) to complete one loop: {average_loop_runtime}")
-        # rospy.loginfo(f"[Excluding rate.sleep] Average time (s) to make inference: {average_inference_time}")
-
-# if __name__ == "__main__":
-    #TODO: determine Message type based on Model - Also need to create custom Message Type for AclInferenceNode.Publisher for respective models...
-
-    # parser = argparse.ArgumentParser(description='AclInference Node.')
-    # parser.add_argument('-m', '--model', metavar='MODEL', type=str, default='face_detection', help='Model name (refer to params.py)')
-    # args = parser.parse_args()
-
-    # model_name = args.model
-
-    # inference_node = AclInferenceNode()
-    # model = inference_node.load_model(model_name)
-    # inference_node.init()
-
-    # counter = 0
-
-    # while not rospy.is_shutdown():
-    #     try:
-    #         if not inference_node.image_queue.empty():
-    #             image, timestamp = inference_node.image_queue.get()
-                
-    #             preprocessed = model.preprocess(image)
-    #             model_output = model.model.execute([preprocessed])
-
-    #             detection_msg = FaceDetection()
-    #             detection_msg.header.stamp = rospy.Time.now()
-    #             detection_msg.array1.list = model_output[0].flatten().tolist()
-    #             detection_msg.array2.list = model_output[1].flatten().tolist()
-    #             detection_msg.array3.list = model_output[2].flatten().tolist()
-    #             detection_msg.img = CvBridge().cv2_to_imgmsg(image)
-
-    #             print(f"[{counter}]: Publish model_output to topic: {inference_node.inference_topic}")
-    #             counter += 1
-    #             inference_node.inference_pub.publish(detection_msg)
-    #             inference_node.inference_pub_rate.sleep()
-    #         else:
-    #             rospy.loginfo("Image queue is empty. Check image_callback")
-    #             continue
-
-    #     except CvBridgeError as err:
-    #             rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-    #             raise err
-    #     except ROSSerializationException as err:
-    #         rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-    #         raise err
-    #     except ROSException as err:
-    #         raise err
-    #     except ROSInterruptException as err:
-    #         rospy.loginfo("ROS Interrupt.")
-    #     except KeyboardInterrupt as err:
-    #         rospy.loginfo("ROS Interrupt.")

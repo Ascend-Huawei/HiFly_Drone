@@ -1,13 +1,15 @@
 import sys
-sys.path.append("../../")
+import rospy
+
+sys.path.append("lib/")
 
 import rospy
-from ros_atlas.hifly_base.BaseInference import BaseInferenceNode
+from base_nodes.BaseInference import BaseInferenceNode
 from custom_ros_msgs.msg import AdaBins
 from cv_bridge import CvBridge, CvBridgeError
 
 class DepthEstNode(BaseInferenceNode):
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
 
     def construct_ros_msg(self, model_output, img):

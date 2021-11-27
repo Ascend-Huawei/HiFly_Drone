@@ -11,13 +11,9 @@ limitations under the License.
 """
 
 from abc import abstractmethod
+import cv2
 from queue import Queue
-import sys
-import numpy as np
-
-sys.path.append("../../")
-
-from ros_atlas.utils.tools import load_model_processor
+from utils.tools import load_model_processor
 
 import rospy
 from sensor_msgs.msg import Image
@@ -74,7 +70,7 @@ class Postprocessor:
         """From ROS Message to expected model_output format"""
         pass
 
-    def run(self, processor):
+    def run(self, processor, img_format="passthrough"):
         while not rospy.is_shutdown():
             if not self.message_queue.empty():
                 try:
@@ -82,10 +78,10 @@ class Postprocessor:
                     model_output = self.deconstruct_ros_msg(message)
                     frame = CvBridge().imgmsg_to_cv2(message.img)
 
-                    postprocessed, _ = processor.postprocess(outputs=model_output, frame=frame)
+                    postprocessed = processor.postprocess(frame=frame, outputs=model_output)
                     rospy.loginfo(f"@postprocess: {type(postprocessed)}")
 
-                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, "passthrough")
+                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
 
                     self.postprocess_pub.publish(postprocessed)
                     rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
@@ -102,8 +98,11 @@ class Postprocessor:
                     raise err
                 except ROSInterruptException as err:
                     rospy.loginfo("ROS Interrupt.")
+                    raise err
                 except KeyboardInterrupt as err:
                     rospy.loginfo("ROS Interrupt.")
+                    raise err
+
             else:
                 continue
 

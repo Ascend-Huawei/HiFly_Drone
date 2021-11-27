@@ -1,14 +1,10 @@
-import acl
 import sys
 import os
 from importlib import import_module
 
-sys.path.append("..")
-sys.path.append("../lib")
 sys.path.append("../../")
-
+sys.path.append("..")       # for load_model_processor -- model_processor subpackage needs to be included in the namespace
 from ros_atlas.utils.params import params
-from ros_atlas.lib.atlas_utils.acl_image import AclImage
 
 def validate_paths():
     """define paths to project, samples and home directory. Check if they exists"""
@@ -44,6 +40,7 @@ def load_model_processor(model_name, display_info=True):
             
             model_info = task_models[model_name]
             processor = model_info["model_processor"]
+
             MP = import_module(f"model_processors.{processor}")
             MP = getattr(MP, "ModelProcessor")
 

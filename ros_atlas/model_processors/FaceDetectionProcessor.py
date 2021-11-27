@@ -11,17 +11,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import acl
-import os
 import cv2
 import numpy as np
-import sys
 import time
+
 from model_processors.BaseProcessor import BaseProcessor
-
-sys.path.append("../lib")
-
-from atlas_utils.resource_list import resource_list
 
 
 class ModelProcessor(BaseProcessor):
@@ -41,22 +35,6 @@ class ModelProcessor(BaseProcessor):
         self.num_classes = 1
         self.anchors = self.get_anchors()
         
-    def release_acl(self):
-        print("acl resource release all resource")
-        resource_list.destroy()
-        if self._acl_resource.stream:
-            print("acl resource release stream")
-            acl.rt.destroy_stream(self._acl_resource.stream)
-
-        if self._acl_resource.context:
-            print("acl resource release context")
-            acl.rt.destroy_context(self._acl_resource.context)
-
-        print("Reset acl device ", self._acl_resource.device_id)
-        acl.rt.reset_device(self._acl_resource.device_id)
-        acl.finalize()
-        print("Release acl resource success")
-
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
         outputs = self.model.execute([preprocessed])
@@ -92,7 +70,7 @@ class ModelProcessor(BaseProcessor):
         # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
         # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
 
-        return frame, yolo_eval_end
+        return frame 
     
     def get_anchors(self):
         """return anchors

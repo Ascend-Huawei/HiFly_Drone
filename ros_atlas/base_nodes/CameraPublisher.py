@@ -44,7 +44,7 @@ class CameraPublisher:
             
         rospy.on_shutdown(self.shutdown)
 
-    def start_publish(self):
+    def start_publish(self) -> None:
         cap = cv2.VideoCapture("/home/HwHiAiUser/HiFly_Drone/data/20210809_141017.mp4")
         rospy.loginfo(f"CameraPublisher - Default video read FPS={round(cap.get(cv2.CAP_PROP_FPS), 3)}")
         if not cap.isOpened(): 
@@ -85,7 +85,7 @@ class CameraPublisher:
             except KeyboardInterrupt as err:
                 rospy.loginfo("ROS Interrupt.")
 
-    def start_publish_live(self):
+    def start_publish_live(self) -> None:
         rospy.loginfo(f"CameraPublisher - Tello Streamon")
         
         while not rospy.is_shutdown():
@@ -121,13 +121,13 @@ class CameraPublisher:
             except KeyboardInterrupt as err:
                 rospy.loginfo("ROS Interrupt.")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Shutdown hook"""
         rospy.loginfo("CamerPublisher node shutdown...")
         rospy.loginfo(f"Release resources...")
-        gc.collect()
 
 if __name__ == "__main__":
+
     uav = connect_uav()
     parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
     parser.add_argument("--fps", default=30, type=int, help='Camera publisher FPS (default: 30)')

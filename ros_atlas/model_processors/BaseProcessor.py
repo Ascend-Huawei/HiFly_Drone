@@ -13,10 +13,11 @@ limitations under the License.
 """
 
 import os 
+import sys
 from abc import abstractmethod
 
-from atlas_utils.acl_resource import AclResource
-from atlas_utils.acl_model import Model
+from ros_atlas.lib.atlas_utils.acl_resource import AclResource
+from ros_atlas.lib.atlas_utils.acl_model import Model
 
 class BaseProcessor:
     def __init__(self, params, process_only):

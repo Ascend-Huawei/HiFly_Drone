@@ -1,8 +1,9 @@
 import sys
 import numpy as np
-sys.path.append("../../")
 
-from ros_atlas.hifly_base.BasePostprocessor import Postprocessor
+sys.path.append("lib/")
+
+from base_nodes.BasePostprocessor import Postprocessor
 
 class FDPostNode(Postprocessor):
     def __init__(self) -> None:

@@ -1,5 +1,5 @@
 import os
-from custom_ros_msgs.msg import Float32Array, FaceDetection, AdaBins
+from custom_ros_msgs.msg import FaceDetection, AdaBins, HandDetection
 
 
 def validate_paths():
@@ -49,7 +49,8 @@ params = {
                 "model_height": 300,
                 "model_path": os.path.join(paths["MODEL_PATH"], "hand_detection.om"),
                 "model_processor": "HandDetectionProcessor",
-                "model_info": "https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee"
+                "model_info": "https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee",
+                "pub_message_type": HandDetection
             },
             "face_detection": {
                 "model_width": 416,
