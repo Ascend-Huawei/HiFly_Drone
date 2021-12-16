@@ -11,13 +11,12 @@ limitations under the License.
 """
 
 from abc import abstractmethod
-import cv2
+import time
 from queue import Queue
 from utils.tools import load_model_processor
 
 import rospy
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
 from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
 
 
@@ -35,10 +34,16 @@ class Postprocessor:
         None
     """
     def __init__(self, expected_img_shape=None):
-        self.message_queue = Queue(maxsize=5)
+        self.message_queue = Queue(maxsize=1)
         self.expected_img_shape = expected_img_shape
-        rospy.on_shutdown(self.shutdown)
+
+        # Objects for runtime analysis
+        self._stamp_dict = dict()
+        self._sub_cb_times = list()
+        self._iteration_times = list()
     
+        rospy.on_shutdown(self.shutdown)
+
     def load_processor(self, model_name):
         mp, model_info = load_model_processor(model_name)
         self._model_info = model_info
@@ -54,7 +59,7 @@ class Postprocessor:
 
             self.inference_sub = rospy.Subscriber(inference_topic, inference_msg_type, self.inference_callback, queue_size=1, buff_size=2**24)
             self.postprocess_pub = rospy.Publisher(postprocess_topic, Image, queue_size=1)
-            self.postprocess_pub_rate = rospy.Rate(30)
+            self.postprocess_pub_rate = rospy.Rate(10) 
             self.pub_counter = 0
             rospy.loginfo("Postprocess Node: Publisher & Subscriber initialized.")
 
@@ -62,51 +67,38 @@ class Postprocessor:
             raise err
     
     def inference_callback(self, msg):
+        msg_publish_time = msg.header.stamp
+        cb_start = time.time()  # start timer
+        msg_arrival_time = rospy.Time.now()
+        self._stamp_dict[msg_publish_time] = msg_arrival_time
+
         if not self.message_queue.full():
             self.message_queue.put(msg)
+            self._sub_cb_times.append(time.time() - cb_start)
+        pass
 
     @abstractmethod
     def deconstruct_ros_msg(self, msg):
         """From ROS Message to expected model_output format"""
         pass
 
-    def run(self, processor, img_format="passthrough"):
-        while not rospy.is_shutdown():
-            if not self.message_queue.empty():
-                try:
-                    message = self.message_queue.get()
-                    model_output = self.deconstruct_ros_msg(message)
-                    frame = CvBridge().imgmsg_to_cv2(message.img)
-
-                    postprocessed = processor.postprocess(frame=frame, outputs=model_output)
-                    rospy.loginfo(f"@postprocess: {type(postprocessed)}")
-
-                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
-
-                    self.postprocess_pub.publish(postprocessed)
-                    rospy.loginfo(f"[{self.pub_counter}] Postprocessed and published.")
-                    self.pub_counter += 1
-                    self.postprocess_pub_rate.sleep()
-
-                except CvBridgeError as err:
-                    rospy.logerr("Ran into exception when converting Image type with CvBridge.")
-                    raise err
-                except ROSSerializationException as err:
-                    rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-                    raise err
-                except ROSException as err:
-                    raise err
-                except ROSInterruptException as err:
-                    rospy.loginfo("ROS Interrupt.")
-                    raise err
-                except KeyboardInterrupt as err:
-                    rospy.loginfo("ROS Interrupt.")
-                    raise err
-
-            else:
-                continue
-
+    @abstractmethod
+    def run(self, processor, img_format="rgb8"):
+        pass
+        
     def shutdown(self):
         """Shutdown hook"""
-        rospy.loginfo("AclInference node shutdown...")
-        rospy.loginfo(f"Release resources...")
+        avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
+        avg_cb_time = sum(self._sub_cb_times) / len(self._sub_cb_times)
+
+        inf2post_msg_transfer_times = [v.to_sec() - k.to_sec() for k,v in self._stamp_dict.items()]
+        inf2post_avg_msg_trasnfer_time = sum(inf2post_msg_transfer_times) / len(inf2post_msg_transfer_times)
+
+        import pickle
+        pickle.dumps(self._stamp_dict, open('inf2post_msg_transfer.pkl', 'wb'))
+
+        rospy.loginfo(f'\nPostprocessor runtime results:')
+        rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")
+        rospy.loginfo(f"Average sub_cb time: {avg_cb_time}")
+        rospy.loginfo(f"Average message transfer time from Inference (publish) -> Postprocess (subscriber cb): {inf2post_avg_msg_trasnfer_time}")
+        rospy.loginfo("Processor node shutdown, release resources...")

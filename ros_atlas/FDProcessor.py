@@ -1,9 +1,15 @@
+import cv2
+from datetime import datetime
 import sys
+import time
+import rospy
 import numpy as np
 
 sys.path.append("lib/")
 
 from base_nodes.BasePostprocessor import Postprocessor
+from cv_bridge import CvBridge, CvBridgeError
+from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
 
 class FDPostNode(Postprocessor):
     def __init__(self) -> None:
@@ -14,9 +20,58 @@ class FDPostNode(Postprocessor):
         array_2 = np.reshape(np.array(msg.array2.list), (1, 26, 26, 18))
         array_3 = np.reshape(np.array(msg.array3.list), (1, 52, 52, 18))
         return [array_1, array_2, array_3]
+    
+    def run(self, processor, img_format):
+        while not rospy.is_shutdown():
+            st = time.time()
+            if not self.message_queue.empty():
+                try:
+                    message = self.message_queue.get()
+                    model_output = self.deconstruct_ros_msg(message)
+                    frame = CvBridge().imgmsg_to_cv2(message.img)
+
+                    postprocessed = processor.postprocess(frame=frame, outputs=model_output)  # ~0.02s
+                    print(f'1. Postprocess time: {time.time() - st}')                         # ~0.04s
+
+                    # tmp = cv2.cvtColor(postprocessed, cv2.COLOR_BGR2RGB)
+                    # Publish postprocess image for visualization
+                    postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
+                    self.postprocess_pub.publish(postprocessed)
+                    self.pub_counter += 1
+                    print(f"[{self.pub_counter}]: Published postprocess output to topic")
+                    print(f'2. Postprocess time: {time.time() - st}')                          # ~0.046 (can ignore)
+
+                    # write to disk 
+                    # filename = datetime.utcnow().strftime('%M%S%f')
+                    # file_path = f'../data/postprocess/{filename}.png'
+                    # cv2.imwrite(file_path, tmp)
+
+                    print(f'3. Postprocess time: {time.time() - st}')
+                    self.postprocess_pub_rate.sleep()                                           # ~0.09
+
+                    print(f'4. Postprocess time: {time.time() - st}\n')
+                    self._iteration_times.append(time.time() - st)                                # ~0.06s
+                    
+                except CvBridgeError as err:
+                    rospy.logerr("Ran into exception when converting Image type with CvBridge.")
+                    raise err
+                except ROSSerializationException as err:
+                    rospy.logerr("Ran into exception when serializing message for publish. See error below:")
+                    raise err
+                except ROSException as err:
+                    raise err
+                except ROSInterruptException as err:
+                    rospy.loginfo("ROS Interrupt.")
+                    raise err
+            else:
+                continue
+    
 
 if __name__ == "__main__":
     fd_postprocess_node = FDPostNode()
     fd_processor = fd_postprocess_node.load_processor("face_detection")
     fd_postprocess_node.init()
-    fd_postprocess_node.run(fd_processor)
+    try:
+        fd_postprocess_node.run(fd_processor, 'rgb8')
+    except KeyboardInterrupt as e:
+        rospy.signal_shutdown("Shutting down CameraPublisher. Keyboard terminate")

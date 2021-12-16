@@ -11,7 +11,7 @@ limitations under the License.
 """
 
 from abc import abstractmethod
-import sys
+from datetime import datetime
 import time
 from queue import Queue
 import rospy
@@ -33,11 +33,17 @@ class BaseInferenceNode:
         Returns:
             None
         
-        TODO: Users need to inherit from AciInference and override the construct_ros_msg method
+        Users need to inherit from baseInference and extend the abstractmethods
         """
-        self.image_queue = Queue(maxsize=5)
-        self.history = dict()
+        self.image_queue = Queue(maxsize=1)
+
+        # time performance metrics
+        self._stamp_dict = dict()
+        self._sub_cb_times = list()
+        self._iteration_times = list()
+        
         rospy.on_shutdown(self.shutdown)
+
 
     def load_model(self, model_name):
         """Returns an instantiated model based on model_name."""
@@ -52,16 +58,14 @@ class BaseInferenceNode:
             rospy.init_node('acl_inference_node', anonymous=True)
             rospy.loginfo("ACLInference Node initializing...")
 
-            self.history["node_start"] = time.time()
             self._inference_topic = f"/acl_inference/{self._model_name}"
             self._inference_msg_type = self._model_info["pub_message_type"]
 
             self.cam_data_sub = rospy.Subscriber("/tello/cam_data_raw", Image, self.image_callback, queue_size=1, buff_size=2**24)
             self.inference_pub = rospy.Publisher(self._inference_topic, self._inference_msg_type, queue_size=1)
-            self.inference_pub_rate = rospy.Rate(30)
+            self.inference_pub_rate = rospy.Rate(10)
             self.pub_counter = 0
             rospy.loginfo("ACLInference Node: Publisher & Subscriber initialized.")
-            return
         except ROSInitException as err:
             err
 
@@ -74,59 +78,43 @@ class BaseInferenceNode:
             img_data    - ROS:SensorMessage.Image
             cam_info    - ROS:SesnorMessage.CameraInfo
         """
-        try:
-            timestamp = imgmsg.header.stamp
-            rgb_img = CvBridge().imgmsg_to_cv2(imgmsg)
-            if not self.image_queue.full():
-                self.image_queue.put((rgb_img, timestamp))
-        except CvBridgeError as err:
-            raise err
+        # compute time difference b/w message publish and arrival
+        # compute cb function time spent
+        msg_publish_time = imgmsg.header.stamp
+        msg_arrival_time = rospy.Time.now()
+        cb_start = time.time()
+        self._stamp_dict[msg_publish_time] = msg_arrival_time
 
+        if not self.image_queue.full():
+            try:
+                rgb_img = CvBridge().imgmsg_to_cv2(imgmsg)
+                self.image_queue.put(rgb_img)
+                self._sub_cb_times.append(time.time() - cb_start)
+            except CvBridgeError as err:
+                raise err
 
     @abstractmethod
     def construct_ros_msg(self, model_output, img):
         """From model_output to expected ROS Message format"""
         pass
     
+    @abstractmethod
     def run(self, model):
-       while not rospy.is_shutdown():
-            try:
-                if not self.image_queue.empty():
-                    image, _ = self.image_queue.get()
-                    
-                    preprocessed = model.preprocess(image)
-                    model_output = model.model.execute([preprocessed])
-
-                    ros_inference_msg = self.construct_ros_msg(model_output, image)
-
-                    print(f"[{self.pub_counter}]: Publish model_output to topic: {self._inference_topic}")
-                    self.inference_pub.publish(ros_inference_msg)
-                    self.pub_counter += 1
-                    self.inference_pub_rate.sleep()
-                else:
-                    rospy.loginfo("Image queue is empty. Check image_callback")
-                    continue
-
-            except CvBridgeError as err:
-                    rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-                    raise err
-            except ROSSerializationException as err:
-                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-                raise err
-            except ROSException as err:
-                raise err
-            except ROSInterruptException as err:
-                rospy.loginfo("ROS Interrupt.")
-                raise err
-            except KeyboardInterrupt as err:
-                rospy.loginfo("ROS Interrupt.")
-                raise err
-
-
+        pass
 
     def shutdown(self):
-        """Shutdown hook"""
-        rospy.loginfo("AclInference node shutdown...")
-        rospy.loginfo(f"Release resources...")
-        
-        self.history["node_end"] = time.time()
+        """Shutdown hook -- computes relevant runtime results for node and shutdown"""
+        avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
+        avg_cb_time = sum(self._sub_cb_times) / len(self._sub_cb_times)
+
+        cam2inf_msg_transfer_times = [v.to_sec() - k.to_sec() for k,v in self._stamp_dict.items()]
+        cam2inf_avg_msg_transfer_time = sum(cam2inf_msg_transfer_times) / len(cam2inf_msg_transfer_times)
+
+        import pickle
+        pickle.dumps(self._stamp_dict, open('cam2inf_msg_transfer.pkl', 'wb'))  
+
+        rospy.loginfo(f'\nInference {self._model_name} runtime results:')
+        rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")
+        rospy.loginfo(f"Average sub_cb time: {avg_cb_time}")
+        rospy.loginfo(f"Average message transfer time from CameraPublisher (publish) -> Inference (subscriber cb): {cam2inf_avg_msg_transfer_time}")
+        rospy.loginfo("Inference node shutdown, release resources...")
