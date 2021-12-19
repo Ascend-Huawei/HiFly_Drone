@@ -40,7 +40,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 
 3. Create and activate python virutal environment: 
 
-    `python3 -m hifly hifly && source hifly/bin/activate`
+    `python3 -m venv hifly && source hifly/bin/activate`
 
 4. Install the required dependencies to run this project:
 
