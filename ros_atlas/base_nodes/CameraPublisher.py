@@ -85,50 +85,15 @@ class CameraPublisher:
                 rospy.signal_shutdown("Frame is None. Shutdown")
                 return
 
-            # [REMOVE] test if reducing resolution can increase performance: halving each dimension
+            # uncomment to resize before publishing (faster runtime)
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             self.convert_and_pubish(image_data)
-            
-
-    def start_publish_live(self) -> None:
-        """Main publish-loop from real-drone"""
-        rospy.loginfo(f"CameraPublisher - Tello Streamon")
-        
-        while not rospy.is_shutdown():
-            image_data = self._uav.get_frame_read().frame
-
-            if image_data is None:
-                rospy.loginfo("Frame is None or return code error.")
-                break
-
-            # [REMOVE] test if reducing resolution can increase performance: halving each dimension
-            # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
-
-            try:
-                img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-                img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
-                img_msg.header.stamp = rospy.Time.now()
-
-                self._cam_data_pub.publish(img_msg)
-                self._pub_counter += 1
-                self._rate.sleep()
-            except CvBridgeError as err:
-                rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
-                raise err
-            except ROSSerializationException as err:
-                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
-                raise err
-            except ROSException as err:
-                raise err
-            except ROSInterruptException as err:
-                rospy.loginfo("ROS Interrupt.")
-                raise err
             
     def shutdown(self) -> None:
         """Shutdown hook"""
         # uncomment to report average runtime
-        # avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
-        # rospy.loginfo(f"CameraPublisher Average iteration time: {avg_iteration_time}")
+        avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
+        rospy.loginfo(f"CameraPublisher Average iteration time: {round(avg_iteration_time, 5)}")
         rospy.loginfo("CamerPublisher node shutdown. Release resources...")
 
 if __name__ == "__main__":
