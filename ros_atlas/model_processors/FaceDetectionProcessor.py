@@ -55,22 +55,34 @@ class ModelProcessor(BaseProcessor):
         img_new = img_new / 255.
         return img_new
         
-    def postprocess(self, outputs, frame):
+    def postprocess(self, frame, outputs):
         yolo_eval_start = time.process_time()
+
+        # TO REMOVE ###########################################
+        process_var_bbox_area = 0
+        cx, cy = float("-inf"), float("-inf")
+        # TO REMOVE ###########################################
+
         box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         yolo_eval_end = time.process_time() - yolo_eval_start
         nparryList, boxList = get_box_img(frame, box_axis)
 
         if len(nparryList) > 0:
-            for box in boxList:
+            for box in boxList:  # should be box = boxList[0] -- single box
+                # TO REMOVE ########################################### 
+                area = (box[1] - box[0]) * (box[3] - box[2])
+                if area > process_var_bbox_area:
+                    cx = (box[0] + box[1]) // 2
+                    cy = (box[2] + box[3]) // 2
+                    process_var_bbox_area = area
+                # TO REMOVE ###########################################
+
                 cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
 
         print(f"\n####################################################################")
         print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
-        # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
-        # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
 
-        return frame 
+        return frame, (process_var_bbox_area, cx, cy)
     
     def get_anchors(self):
         """return anchors

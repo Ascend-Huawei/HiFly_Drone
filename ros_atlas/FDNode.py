@@ -63,7 +63,7 @@ class FDInferNode(BaseInferenceNode):
    
 if __name__ == "__main__":
     import os
-    print(f"FDProcessor pid: {os.getpid()}")
+    print(f"FDNode pid: {os.getpid()}")
     fd_inference_node = FDInferNode()
     fd_model = fd_inference_node.load_model("face_detection")
     fd_inference_node.init()

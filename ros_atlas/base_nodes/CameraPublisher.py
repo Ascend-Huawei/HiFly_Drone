@@ -96,6 +96,7 @@ class CameraPublisher:
         rospy.loginfo(f"CameraPublisher Average iteration time: {round(avg_iteration_time, 5)}")
         rospy.loginfo("CamerPublisher node shutdown. Release resources...")
 
+
 if __name__ == "__main__":
     uav = None
 
