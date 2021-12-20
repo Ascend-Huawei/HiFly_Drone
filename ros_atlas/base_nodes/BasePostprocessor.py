@@ -17,7 +17,7 @@ from utils.tools import load_model_processor
 
 import rospy
 from sensor_msgs.msg import Image
-from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
+from rospy.exceptions import ROSInitException
 
 
 class Postprocessor:
@@ -55,7 +55,7 @@ class Postprocessor:
             rospy.init_node("postprocessor")
             inference_topic = f"/acl_inference/{self._model_name}"
             postprocess_topic = f"/postprocess/{self._model_name}"
-            inference_msg_type = self._model_info["pub_message_type"]       # extracts model-specify inference MessageType
+            inference_msg_type = self._model_info["pub_message_type"]       # extracts model-specific MessageType
 
             self.inference_sub = rospy.Subscriber(inference_topic, inference_msg_type, self.inference_callback, queue_size=1, buff_size=2**24)
             self.postprocess_pub = rospy.Publisher(postprocess_topic, Image, queue_size=1)
@@ -64,7 +64,7 @@ class Postprocessor:
             rospy.loginfo("Postprocess Node: Publisher & Subscriber initialized.")
 
         except ROSInitException as err:
-            raise err
+            rospy.logerr(err)
     
     def inference_callback(self, msg):
         msg_publish_time = msg.header.stamp
@@ -94,11 +94,11 @@ class Postprocessor:
         inf2post_msg_transfer_times = [v.to_sec() - k.to_sec() for k,v in self._stamp_dict.items()]
         inf2post_avg_msg_trasnfer_time = sum(inf2post_msg_transfer_times) / len(inf2post_msg_transfer_times)
 
-        import pickle
-        pickle.dump(self._stamp_dict, open('inf2post_msg_transfer.pkl', 'wb'))
+        # import pickle
+        # pickle.dump(self._stamp_dict, open('inf2post_msg_transfer.pkl', 'wb'))
 
         rospy.loginfo(f'\nPostprocessor runtime results:')
-        rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")
-        rospy.loginfo(f"Average sub_cb time: {avg_cb_time}")
-        rospy.loginfo(f"Average message transfer time from Inference (publish) -> Postprocess (subscriber cb): {inf2post_avg_msg_trasnfer_time}")
+        rospy.loginfo(f"Average while-iteration time: {round(avg_iteration_time, 5)}s")
+        rospy.loginfo(f"Average sub_cb time: {round(avg_cb_time, 5)}s")
+        rospy.loginfo(f"Average message transfer time from Inference (publish) -> Postprocess (subscriber cb): {round(inf2post_avg_msg_trasnfer_time, 5)}s")
         rospy.loginfo("Processor node shutdown, release resources...")

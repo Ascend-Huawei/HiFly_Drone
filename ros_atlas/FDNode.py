@@ -8,7 +8,7 @@ sys.path.append("lib/")
 
 from base_nodes.BaseInference import BaseInferenceNode
 from custom_ros_msgs.msg import FaceDetection
-from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
+from rospy.exceptions import ROSException, ROSSerializationException, ROSInterruptException
 from cv_bridge import CvBridge, CvBridgeError
 
 class FDInferNode(BaseInferenceNode):
@@ -36,26 +36,15 @@ class FDInferNode(BaseInferenceNode):
                     
                     preprocessed = model.preprocess(image)
                     model_output = model.model.execute([preprocessed])
-                    print(f'1. Inference time: {time.time() - st}')
 
-                    ros_inference_msg = self.construct_ros_msg(model_output, image)     # ~0.03s
+                    ros_inference_msg = self.construct_ros_msg(model_output, image)
                     self.inference_pub.publish(ros_inference_msg)
                     self.pub_counter += 1
                     print(f"[{self.pub_counter}]: Published model output(s) to topic: {self._inference_topic}")
-                    print(f'2. Inference time: {time.time() - st}')
 
-
-                    # filename = datetime.utcnow().strftime('%M%S%f')
-                    # iteration_time = int(filename) - int(loop_start_time)
-                    # rospy.loginfo(f'Time spent on 1 iteration of FDNode while-loop: {iteration_time}')
-                    # self.iteration_times.append(iteration_time)
-
-                    print(f'3. Inference time: {time.time() - st}')
                     self.inference_pub_rate.sleep()
 
-                    print(f'4. Inference time: {time.time() - st}')
                     self._iteration_times.append(time.time() - st)
-
                 else:
                     continue
 

@@ -1,5 +1,4 @@
 import cv2
-from datetime import datetime
 import sys
 import time
 import rospy
@@ -9,7 +8,7 @@ sys.path.append("lib/")
 
 from base_nodes.BasePostprocessor import Postprocessor
 from cv_bridge import CvBridge, CvBridgeError
-from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
+from rospy.exceptions import ROSException, ROSSerializationException, ROSInterruptException
 
 class FDPostNode(Postprocessor):
     def __init__(self) -> None:
@@ -30,27 +29,17 @@ class FDPostNode(Postprocessor):
                     model_output = self.deconstruct_ros_msg(message)
                     frame = CvBridge().imgmsg_to_cv2(message.img)
 
-                    postprocessed = processor.postprocess(frame=frame, outputs=model_output)  # ~0.02s
-                    print(f'1. Postprocess time: {time.time() - st}')                         # ~0.04s
+                    postprocessed = processor.postprocess(frame=frame, outputs=model_output)  
+                    print(f'1. Postprocess time: {time.time() - st}')                         
 
-                    # tmp = cv2.cvtColor(postprocessed, cv2.COLOR_BGR2RGB)
                     # Publish postprocess image for visualization
                     postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
                     self.postprocess_pub.publish(postprocessed)
                     self.pub_counter += 1
                     print(f"[{self.pub_counter}]: Published postprocess output to topic")
-                    print(f'2. Postprocess time: {time.time() - st}')                          # ~0.046 (can ignore)
 
-                    # write to disk 
-                    # filename = datetime.utcnow().strftime('%M%S%f')
-                    # file_path = f'../data/postprocess/{filename}.png'
-                    # cv2.imwrite(file_path, tmp)
-
-                    print(f'3. Postprocess time: {time.time() - st}')
-                    self.postprocess_pub_rate.sleep()                                           # ~0.09
-
-                    print(f'4. Postprocess time: {time.time() - st}\n')
-                    self._iteration_times.append(time.time() - st)                                # ~0.06s
+                    self.postprocess_pub_rate.sleep()                                           
+                    self._iteration_times.append(time.time() - st)                                
                     
                 except CvBridgeError as err:
                     rospy.logerr("Ran into exception when converting Image type with CvBridge.")

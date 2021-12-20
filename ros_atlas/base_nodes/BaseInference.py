@@ -44,7 +44,6 @@ class BaseInferenceNode:
         
         rospy.on_shutdown(self.shutdown)
 
-
     def load_model(self, model_name):
         """Returns an instantiated model based on model_name."""
         mp, model_info = load_model_processor(model_name)
@@ -67,7 +66,7 @@ class BaseInferenceNode:
             self.pub_counter = 0
             rospy.loginfo("ACLInference Node: Publisher & Subscriber initialized.")
         except ROSInitException as err:
-            err
+            rospy.logerr(err)
 
     def image_callback(self, imgmsg):
         """Subscriber callback function triggered upon receiving incoming data from CameraPublisher 
@@ -78,13 +77,11 @@ class BaseInferenceNode:
             img_data    - ROS:SensorMessage.Image
             cam_info    - ROS:SesnorMessage.CameraInfo
         """
-        # compute time difference b/w message publish and arrival
-        # compute cb function time spent
         msg_publish_time = imgmsg.header.stamp
         msg_arrival_time = rospy.Time.now()
         cb_start = time.time()
         self._stamp_dict[msg_publish_time] = msg_arrival_time
-
+        
         if not self.image_queue.full():
             try:
                 rgb_img = CvBridge().imgmsg_to_cv2(imgmsg)
@@ -110,11 +107,11 @@ class BaseInferenceNode:
         cam2inf_msg_transfer_times = [v.to_sec() - k.to_sec() for k,v in self._stamp_dict.items()]
         cam2inf_avg_msg_transfer_time = sum(cam2inf_msg_transfer_times) / len(cam2inf_msg_transfer_times)
 
-        import pickle
-        pickle.dump(self._stamp_dict, open('cam2inf_msg_transfer.pkl', 'wb'))  
+        # import pickle
+        # pickle.dump(self._stamp_dict, open('cam2inf_msg_transfer.pkl', 'wb')) 
 
         rospy.loginfo(f'\nInference {self._model_name} runtime results:')
-        rospy.loginfo(f"Average while-iteration time: {avg_iteration_time}")
-        rospy.loginfo(f"Average sub_cb time: {avg_cb_time}")
-        rospy.loginfo(f"Average message transfer time from CameraPublisher (publish) -> Inference (subscriber cb): {cam2inf_avg_msg_transfer_time}")
+        rospy.loginfo(f"Average while-iteration time: {round(avg_iteration_time, 5)}s")
+        rospy.loginfo(f"Average sub_cb time: {round(avg_cb_time, 5)}s")
+        rospy.loginfo(f"Average message transfer time from CameraPublisher (publish) -> Inference (subscriber cb): {round(cam2inf_avg_msg_transfer_time, 5)}s")
         rospy.loginfo("Inference node shutdown, release resources...")
