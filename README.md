@@ -111,6 +111,6 @@ A list of integrated modules
 - [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) <br>
 - [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee) <br>
 - [Hand Gesture Recognition]()
-- [Indoor Depth Estimation]()
+- [Indoor Depth Estimation](https://gitee.com/HardysJin/samples/tree/master/python/contrib/indoor_depth_estimation_picture)
 
 
