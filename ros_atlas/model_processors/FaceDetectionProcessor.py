@@ -56,20 +56,12 @@ class ModelProcessor(BaseProcessor):
         return img_new
         
     def postprocess(self, outputs, frame):
-        yolo_eval_start = time.process_time()
         box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
-        yolo_eval_end = time.process_time() - yolo_eval_start
         nparryList, boxList = get_box_img(frame, box_axis)
 
         if len(nparryList) > 0:
             for box in boxList:
                 cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
-
-        print(f"\n####################################################################")
-        print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
-        # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
-        # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
-
         return frame 
     
     def get_anchors(self):

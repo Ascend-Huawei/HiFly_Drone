@@ -30,7 +30,6 @@ class FDPostNode(Postprocessor):
                     frame = CvBridge().imgmsg_to_cv2(message.img)
 
                     postprocessed = processor.postprocess(frame=frame, outputs=model_output)  
-                    print(f'1. Postprocess time: {time.time() - st}')                         
 
                     # Publish postprocess image for visualization
                     postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)

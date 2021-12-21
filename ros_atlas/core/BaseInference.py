@@ -11,14 +11,13 @@ limitations under the License.
 """
 
 from abc import abstractmethod
-from datetime import datetime
 import time
 from queue import Queue
 import rospy
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from rospy.exceptions import ROSException, ROSSerializationException, ROSInitException, ROSInterruptException
+from rospy.exceptions import ROSInitException
 
 from utils.tools import load_model_processor
 

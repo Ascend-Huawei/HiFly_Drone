@@ -68,7 +68,7 @@ class Postprocessor:
     
     def inference_callback(self, msg):
         msg_publish_time = msg.header.stamp
-        cb_start = time.time()  # start timer
+        cb_start = time.time()
         msg_arrival_time = rospy.Time.now()
         self._stamp_dict[msg_publish_time] = msg_arrival_time
 

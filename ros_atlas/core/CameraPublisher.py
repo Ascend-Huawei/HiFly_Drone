@@ -29,7 +29,7 @@ class CameraPublisher:
         self._pub_counter = 0
         
         # for runtime analysis
-        self._iteration_times = []       # to remove after experiment
+        self._iteration_times = []
         
         if self._uav is not None:
             self._uav.streamon()
@@ -80,18 +80,20 @@ class CameraPublisher:
         
         while not rospy.is_shutdown():
             image_data = self._uav.get_frame_read().frame if live_feed else cap.read()[1]
-
             if image_data is None:
-                rospy.signal_shutdown("Frame is None. Shutdown")
+                rospy.signal_shutdown("Frame is None. Shutting down CameraPublisher.")
                 return
+            
+            # ensure image_data is size (960, 720) if not live-stream
+            if image_data.shape != (960, 720):
+                image_data = cv2.resize(image_data, (960, 720))
 
-            # uncomment to resize before publishing (faster runtime)
+            # uncomment to resize before publishing (faster runtime) - also need to specify expect_img_size in Postprocessor
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             self.convert_and_pubish(image_data)
             
     def shutdown(self) -> None:
         """Shutdown hook"""
-        # uncomment to report average runtime
         avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
         rospy.loginfo(f"CameraPublisher Average iteration time: {round(avg_iteration_time, 5)}")
         rospy.loginfo("CamerPublisher node shutdown. Release resources...")
