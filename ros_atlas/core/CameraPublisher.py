@@ -46,9 +46,9 @@ class CameraPublisher:
 
     def convert_and_pubish(self, image_data) -> None:
         st = time.time()
+        # img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
         try:
-            img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-            img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
+            img_msg = CvBridge().cv2_to_imgmsg(image_data, "rgb8")
             img_msg.header.stamp = rospy.Time.now()
 
             self._cam_data_pub.publish(img_msg)
@@ -84,7 +84,7 @@ class CameraPublisher:
                 rospy.signal_shutdown("Frame is None. Shutting down CameraPublisher.")
                 return
             
-            # ensure image_data is size (960, 720) if not live-stream
+            # ensure image_data.shape==(960, 720) if not live-stream
             if image_data.shape != (960, 720):
                 image_data = cv2.resize(image_data, (960, 720))
 
@@ -103,10 +103,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
     parser.add_argument("--fps", default=10, type=int, help='Camera publisher FPS (default: 30)')
-    parser.add_argument("--live-feed", dest='live_feed', action='store_true')
-    parser.add_argument("--no-live-feed", dest='live_feed', action='store_false')
+    parser.add_argument("--live-feed", dest='live_feed', action='store_true', help='Use live-feed from drone')
+    parser.add_argument("--no-live-feed", dest='live_feed', action='store_false', help='Run on pre-recorded video')
     args = parser.parse_args()
-    print(args.live_feed)
 
     if args.live_feed:
         uav = connect_uav()

@@ -1,4 +1,3 @@
-import cv2
 import sys
 import time
 import rospy
@@ -6,7 +5,7 @@ import numpy as np
 
 sys.path.append("lib/")
 
-from base_nodes.BasePostprocessor import Postprocessor
+from core.BasePostprocessor import Postprocessor
 from cv_bridge import CvBridge, CvBridgeError
 from rospy.exceptions import ROSException, ROSSerializationException, ROSInterruptException
 
@@ -35,7 +34,7 @@ class FDPostNode(Postprocessor):
                     postprocessed = CvBridge().cv2_to_imgmsg(postprocessed, img_format)
                     self.postprocess_pub.publish(postprocessed)
                     self.pub_counter += 1
-                    print(f"[{self.pub_counter}]: Published postprocess output to topic")
+                    rospy.loginfo(f"[{self.pub_counter}]: Published postprocess output to {self._postprocess_topic}")
 
                     self.postprocess_pub_rate.sleep()                                           
                     self._iteration_times.append(time.time() - st)                                
@@ -62,4 +61,4 @@ if __name__ == "__main__":
     try:
         fd_postprocess_node.run(fd_processor, 'rgb8')
     except KeyboardInterrupt as e:
-        rospy.signal_shutdown("Shutting down CameraPublisher. Keyboard terminate")
+        rospy.signal_shutdown("Shutting down Postprocessor. Keyboard terminate")
