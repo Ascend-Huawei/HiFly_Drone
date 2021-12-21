@@ -11,21 +11,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import acl
-import os
 import cv2
 import numpy as np
-import sys
 import time
-from model_processors.BaseProcessor import BaseProcessor
 
-sys.path.append("../../../../src/lib")
-from atlas_utils.resource_list import resource_list
+from model_processors.BaseProcessor import BaseProcessor
 
 
 class ModelProcessor(BaseProcessor):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, params, expected_image_shape=None, process_only=False):
+        super().__init__(params=params, process_only=process_only)
         
         # parameters for preprocessing
         self.ih, self.iw = (params['camera_height'], params['camera_width'])
@@ -35,34 +30,17 @@ class ModelProcessor(BaseProcessor):
         self.nh = int(self.ih * self.scale)
 
         # parameters for postprocessing
-        self.image_shape = [params['camera_height'], params['camera_width']]
+        self.image_shape = expected_image_shape if expected_image_shape is not None else [params['camera_height'], params['camera_width']]
         self.model_shape = [self.h, self.w]
         self.num_classes = 1
         self.anchors = self.get_anchors()
         
-    def release_acl(self):
-        print("acl resource release all resource")
-        resource_list.destroy()
-        if self._acl_resource.stream:
-            print("acl resource release stream")
-            acl.rt.destroy_stream(self._acl_resource.stream)
-
-        if self._acl_resource.context:
-            print("acl resource release context")
-            acl.rt.destroy_context(self._acl_resource.context)
-
-        print("Reset acl device ", self._acl_resource.device_id)
-        acl.rt.reset_device(self._acl_resource.device_id)
-        acl.finalize()
-        print("Release acl resource success")
-
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
         outputs = self.model.execute([preprocessed])
         
         postprocess_start = time.process_time()
         result = self.postprocess(frame, outputs)
-        print(f"@predict.postprocess = {time.process_time() - postprocess_start}")
         return result
 
     def preprocess(self, frame):
@@ -76,23 +54,14 @@ class ModelProcessor(BaseProcessor):
         img_new = img_new / 255.
         return img_new
         
-    def postprocess(self, frame, outputs):
-        yolo_eval_start = time.process_time()
-        box_axis, box_score = yolo_eval(
-            outputs, self.anchors, self.num_classes, self.image_shape)
-        yolo_eval_end = time.process_time() - yolo_eval_start
+    def postprocess(self, outputs, frame):
+        box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         nparryList, boxList = get_box_img(frame, box_axis)
 
         if len(nparryList) > 0:
             for box in boxList:
                 cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
-
-        print(f"\n####################################################################")
-        print(f"@postprocess.yolo_eval process duration = {round(yolo_eval_end, 3)}")
-        # print(f"@postprocess:getbox process duration = {round(getbox_end, 3)}")
-        # print(f"@postprocess:forloop process duration = {round(forloop_end, 3)}")
-
-        return frame, yolo_eval_end
+        return frame 
     
     def get_anchors(self):
         """return anchors
@@ -196,14 +165,10 @@ def yolo_boxes_and_scores(feats, anchors, num_classes, input_shape, image_shape)
 
 def nms(bounding_boxes, confidence_score, threshold):
     """non maximum suppression for filter boxes"""
-    print(f"\n@predict.postprocess.yolo_eval.nms analysis") 
     # If no bounding boxes, return empty list
     if len(bounding_boxes) == 0:
-        print("\t@nms: returns empty list")
         return [], []
 
-    def_var_start = time.process_time()
-    
     # Bounding boxes
     boxes = np.array(bounding_boxes)
 
@@ -223,10 +188,6 @@ def nms(bounding_boxes, confidence_score, threshold):
     order = np.argsort(score)[::-1]
     keep = []
 
-    def_var_end = time.process_time() - def_var_start
-    print(f"\t@nms: define variables (bbox, area, etc duration: {def_var_end}")
-
-    while_loop_start = time.process_time()
     # Iterate bounding boxes
     while order.size > 0:
         # The index of largest confidence score
@@ -248,9 +209,6 @@ def nms(bounding_boxes, confidence_score, threshold):
         ratio = intersection / (areas[index] + areas[order[1:]] - intersection)
         inds = np.where(ratio <= threshold)[0]
         order = order[inds + 1]
-
-    while_loop_end = time.process_time() - while_loop_start
-    print(f"\t@nms: whileloop bbox iteration: {while_loop_end}")
 
     picked_boxes = [bounding_boxes[i] for i in keep]
     if not score.shape:
@@ -274,8 +232,6 @@ def yolo_eval(yolo_outputs, anchors, num_classes, image_shape, score_threshold=.
     Returns:
         predicted boxes axis and corresponding scores
     """
-    print("\n@postprocess:yolo_eval analysis:")
-
     num_layers = len(yolo_outputs)
     anchor_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
     yolo_output_0 = yolo_outputs[0]
@@ -285,14 +241,11 @@ def yolo_eval(yolo_outputs, anchors, num_classes, image_shape, score_threshold=.
     box_scores = []
 
     # forloop start
-    num_layer_start = time.process_time()
     for l in range(num_layers):
         _boxes, _box_scores = yolo_boxes_and_scores(yolo_outputs[l],
                                                     anchors[anchor_mask[l]], num_classes, input_shape, image_shape)
         boxes.append(_boxes)
         box_scores.append(_box_scores)
-    num_layer_end = time.process_time() - num_layer_start
-    print(f"\t@yolo_eval:forloop process duration: {num_layer_end}")
 
     boxes = np.concatenate(boxes, axis=0)
     box_scores = np.concatenate(box_scores, axis=0)
@@ -302,11 +255,7 @@ def yolo_eval(yolo_outputs, anchors, num_classes, image_shape, score_threshold=.
     class_box_scores = np.squeeze(class_box_scores)
 
     # nms
-    nms_start = time.process_time()
     box, score = nms(class_boxes, class_box_scores, iou_threshold)
-    nms_end = time.process_time() - num_layer_start
-    print(f"\t@yolo_eval:nms process duration: {nms_end}")
-
 
     return box, score
 
