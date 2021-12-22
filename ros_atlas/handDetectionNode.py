@@ -1,10 +1,10 @@
 import sys
 import rospy
-import cv2
+import time
 
 sys.path.append("lib/")
 
-from base_nodes.BaseInference import BaseInferenceNode
+from core.BaseInference import BaseInferenceNode
 from custom_ros_msgs.msg import HandDetection
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -26,9 +26,49 @@ class HandDetectionNode(BaseInferenceNode):
             return detection_msg
         except CvBridgeError as err:
             raise err
+    
+    def run(self, model):
+        """Main loop for inference. Make inference with model on images from CameraPublisher and publish.
+        @param:model    - a ModelProcessor object 
+        Returns:
+            None
+        """
+        while not rospy.is_shutdown():
+            st = time.time()
+            try:
+                if not self.image_queue.empty():
+                    image = self.image_queue.get()
+                    
+                    preprocessed = model.preprocess(image)
+                    model_output = model.model.execute([preprocessed])
+
+                    ros_inference_msg = self.construct_ros_msg(model_output, image)
+                    self.inference_pub.publish(ros_inference_msg)
+                    self.pub_counter += 1
+                    print(f"[{self.pub_counter}]: Published model output(s) to topic: {self._inference_topic}")
+
+                    self.inference_pub_rate.sleep()
+                    self._iteration_times.append(time.time() - st)
+                else:
+                    continue
+
+            except CvBridgeError as err:
+                    rospy.logerr("Ran into exception when converting message type with CvBridge. See error below:")
+                    raise err
+            except ROSSerializationException as err:
+                rospy.logerr("Ran into exception when serializing message for publish. See error below:")
+                raise err
+            except ROSException as err:
+                raise err
+            except ROSInterruptException as err:
+                rospy.loginfo("ROS Interrupt.")
+                raise err
   
 if __name__ == "__main__":
     inference_node = HandDetectionNode()
     hd_model = inference_node.load_model("hand_detection")
     inference_node.init()
-    inference_node.run(hd_model)
+    try:
+        inference_node.run(hd_model)
+    except KeyboardInterrupt as e:
+        rospy.signal_shutdown("Shutting down Inference. Keyboard terminate")

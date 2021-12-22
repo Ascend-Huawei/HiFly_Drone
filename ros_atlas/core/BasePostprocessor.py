@@ -51,13 +51,13 @@ class Postprocessor:
     def init(self):
         try:
             rospy.init_node("postprocessor")
-            inference_topic = f"/acl_inference/{self._model_name}"
-            postprocess_topic = f"/postprocess/{self._model_name}"
+            self._inference_topic = f"/acl_inference/{self._model_name}"
+            self._postprocess_topic = f"/postprocess/{self._model_name}"
             inference_msg_type = self._model_info["pub_message_type"]       # extracts model-specific MessageType
 
-            self.inference_sub = rospy.Subscriber(inference_topic, inference_msg_type, self.inference_callback, queue_size=1, buff_size=2**24)
-            self.postprocess_pub = rospy.Publisher(postprocess_topic, Image, queue_size=1)
-            self.postprocess_pub_rate = rospy.Rate(10)
+            self.inference_sub = rospy.Subscriber(self._inference_topic, inference_msg_type, self.inference_callback, queue_size=1, buff_size=2**24)
+            self.postprocess_pub = rospy.Publisher(self._postprocess_topic, Image, queue_size=1)
+            self.postprocess_pub_rate = rospy.Rate(10) 
             self.pub_counter = 0
             rospy.loginfo("Postprocess Node: Publisher & Subscriber initialized.")
 
@@ -66,7 +66,7 @@ class Postprocessor:
     
     def inference_callback(self, msg):
         msg_publish_time = msg.header.stamp
-        cb_start = time.time()  # start timer
+        cb_start = time.time()
         msg_arrival_time = rospy.Time.now()
         self._stamp_dict[msg_publish_time] = msg_arrival_time
 

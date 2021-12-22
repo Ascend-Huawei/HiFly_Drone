@@ -5,21 +5,22 @@ This project was created while keeping in mind of modularity and fast prototype 
 ### Useful Links
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
-[Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
+[🐶 Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
 [📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
-[📓 HiFly Wiki Page](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)<br>
-
+[🚁 HiFly PID Tracker Video](https://www.youtube.com/watch?v=Gix8SquAKGM&t=2s)<br>
 
 ### Hardware Requirements
 - [Atlas 200 DK](https://e.huawei.com/ph/products/cloud-computing-dc/atlas/atlas-200)
 - [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
 - Wireless Router (TP-Link TL-WR902AC)
 
-**[HiFly Wiki](https://github.com/Ascend-Huawei/HiFly_Drone/wiki)**
+### 📓 HiFly Wiki
 - [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
 - [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
 - [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
 - [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
+- [Project: Parallel Inference](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Multiprocess-Inference)
+- [Project: PID Tracker](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)
 <hr>
 
 ## Table of Content
@@ -39,7 +40,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 
 3. Create and activate python virutal environment: 
 
-    `python3 -m hifly hifly && source hifly/bin/activate`
+    `python3 -m venv hifly && source hifly/bin/activate`
 
 4. Install the required dependencies to run this project:
 
@@ -105,9 +106,11 @@ To add your own inference module to this project, you need:
     > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
 ## Available Modules
-A list of currently available modules
-### Objection Detection
+A list of integrated modules
 - [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) <br>
 - [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) <br>
 - [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee) <br>
+- [Hand Gesture Recognition]()
+- [Indoor Depth Estimation](https://gitee.com/HardysJin/samples/tree/master/python/contrib/indoor_depth_estimation_picture)
+
 

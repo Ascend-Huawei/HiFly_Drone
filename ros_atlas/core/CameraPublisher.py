@@ -29,7 +29,7 @@ class CameraPublisher:
         self._pub_counter = 0
         
         # for runtime analysis
-        self._iteration_times = []       # to remove after experiment
+        self._iteration_times = []
         
         if self._uav is not None:
             self._uav.streamon()
@@ -46,9 +46,9 @@ class CameraPublisher:
 
     def convert_and_pubish(self, image_data) -> None:
         st = time.time()
+        # img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
         try:
-            img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
-            img_msg = CvBridge().cv2_to_imgmsg(img_msg, "rgb8")
+            img_msg = CvBridge().cv2_to_imgmsg(image_data, "rgb8")
             img_msg.header.stamp = rospy.Time.now()
 
             self._cam_data_pub.publish(img_msg)
@@ -80,18 +80,20 @@ class CameraPublisher:
         
         while not rospy.is_shutdown():
             image_data = self._uav.get_frame_read().frame if live_feed else cap.read()[1]
-
             if image_data is None:
-                rospy.signal_shutdown("Frame is None. Shutdown")
+                rospy.signal_shutdown("Frame is None. Shutting down CameraPublisher.")
                 return
+            
+            # ensure image_data.shape==(960, 720) if not live-stream
+            if image_data.shape != (960, 720):
+                image_data = cv2.resize(image_data, (960, 720))
 
-            # uncomment to resize before publishing (faster runtime)
+            # uncomment to resize before publishing (faster runtime) - also need to specify expect_img_size in Postprocessor
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             self.convert_and_pubish(image_data)
             
     def shutdown(self) -> None:
         """Shutdown hook"""
-        # uncomment to report average runtime
         avg_iteration_time = sum(self._iteration_times) / len(self._iteration_times)
         rospy.loginfo(f"CameraPublisher Average iteration time: {round(avg_iteration_time, 5)}")
         rospy.loginfo("CamerPublisher node shutdown. Release resources...")
@@ -102,10 +104,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
     parser.add_argument("--fps", default=10, type=int, help='Camera publisher FPS (default: 30)')
-    parser.add_argument("--live-feed", dest='live_feed', action='store_true')
-    parser.add_argument("--no-live-feed", dest='live_feed', action='store_false')
+    parser.add_argument("--live-feed", dest='live_feed', action='store_true', help='Use live-feed from drone')
+    parser.add_argument("--no-live-feed", dest='live_feed', action='store_false', help='Run on pre-recorded video')
     args = parser.parse_args()
-    print(args.live_feed)
 
     if args.live_feed:
         uav = connect_uav()

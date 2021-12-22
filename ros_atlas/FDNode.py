@@ -1,12 +1,11 @@
-import cv2
-from datetime import datetime
 import sys
 import time
+import os
 import rospy
 
 sys.path.append("lib/")
 
-from base_nodes.BaseInference import BaseInferenceNode
+from core.BaseInference import BaseInferenceNode
 from custom_ros_msgs.msg import FaceDetection
 from rospy.exceptions import ROSException, ROSSerializationException, ROSInterruptException
 from cv_bridge import CvBridge, CvBridgeError
@@ -28,6 +27,11 @@ class FDInferNode(BaseInferenceNode):
             raise err
     
     def run(self, model):
+        """Main loop for inference. Make inference with model on images from CameraPublisher and publish.
+        @param:model    - a ModelProcessor object 
+        Returns:
+            None
+        """
         while not rospy.is_shutdown():
             st = time.time()
             try:
@@ -43,7 +47,6 @@ class FDInferNode(BaseInferenceNode):
                     print(f"[{self.pub_counter}]: Published model output(s) to topic: {self._inference_topic}")
 
                     self.inference_pub_rate.sleep()
-
                     self._iteration_times.append(time.time() - st)
                 else:
                     continue
@@ -62,7 +65,6 @@ class FDInferNode(BaseInferenceNode):
 
    
 if __name__ == "__main__":
-    import os
     print(f"FDNode pid: {os.getpid()}")
     fd_inference_node = FDInferNode()
     fd_model = fd_inference_node.load_model("face_detection")
