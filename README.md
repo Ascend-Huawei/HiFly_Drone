@@ -23,9 +23,12 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [Project: PID Tracker](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)
 <hr>
 
+## ROS implementation
+The following is for simple Python Implementation. For ROS implementation, please refer to [this guide](ros_atlas)
+
 ## Table of Content
 [Installation](#installation)<br>
-[How to run the project](#how-to-run-the-project)<br>
+[How to run the project](#how-to-run-a-simple-project)<br>
 [Code Implementation and how to extend](#code-implementation)<br>
 [Available Modules](#available-modules)
 
@@ -76,7 +79,6 @@ Knowing how to build an AI inference application on Ascend AI processor is requi
 ## How to run face tracking project
 1. Download the [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) (`yolo_model.om`), rename it as `face_detection.om`, and store the file inside the `models` subdirectory. 
 2. Follow this [guide](src/pid_controllers) to run the PIDtracker. (Set `--use_ps=True` for live stream on PC)
-
 
 ## Code Implementation
 
