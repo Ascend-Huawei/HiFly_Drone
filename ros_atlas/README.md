@@ -2,11 +2,15 @@
 Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 200 DK and DJI Tello (now with ROS!).
 
 
-### Table-of-Contents
-[ROS Conda Environment Installation](#install-ros-on-atlass-200-dk)<br>
-[(Optional) ROS Docker Installation](#[optional]-install-ros-docker)<br>
-[How to Run](#how-to-run-the-core-ROS-Nodes)
+<!-- ### Table-of-Contents
+[ROS Conda Environment Installation](#install-robostack-on-atlas-200-dk)<br>
+[(Optional) ROS Docker Installation](#optional-install-ros-docker-on-local-machine)<br>
+[Setting up dependent ROS packages](#setting-up-ros-packages)<br>
+[How to Run Pipeline](#run-core-pipeline-with-face-detection)<br>
+[Code Implementation](#code-implementation)<br>
+[Project Extension](#project-extension)<br>
 
+ -->
 ## Install RoboStack on Atlas 200 DK
 `RoboStack` is a pre-built Conda environment for any ROS distributions. See their repo for more info: [RoboStack/ros-noetic](https://github.com/RoboStack/ros-noetic).<br>
 
@@ -23,7 +27,7 @@ Please ensure you have `conda` installed before following the steps below.
 <hr>
 
 
-## [Optional] Install ROS-Docker on PC/Laptop (for visualization) 
+## [Optional] Install ROS-Docker on Local Machine
 
 For visualization purposes, we may run a ROS GUI (rqt) from inside a Docker container on an external machine that listens to the topics on the Atlas 200 DK. 
 To do so, pull the official `ros:noetic` image from the `osrf` DockerHub repository on the host machine (your laptop or desktop)
@@ -32,7 +36,7 @@ docker pull osrf/ros:noetic-desktop-full
 ```
 <hr>
 
-## Setting up dependent ROS packages
+## Setting up ROS packages
 
 > **Prerequisite - Compile custom ROS messages** used in the project by copying `HiFly_Drone/ros_atlas/catkin_ws/src/custom_ros_msg/` to your catkin workspace and compile with `catkin_make` to create the `custom_ros_msg` ROS package. Refer to this guide: [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details.
 
@@ -53,7 +57,7 @@ docker pull osrf/ros:noetic-desktop-full
 > Please refer to [this documentation from ROS](http://wiki.ros.org/ROS/Tutorials/CreatingPackage) for more resources on how to create a ROS package, 
 <hr>
 
-## How to run: Core pipeline with FaceDetection model
+## Run Core pipeline with Face Detection 
 This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone.
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
