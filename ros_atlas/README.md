@@ -36,8 +36,8 @@ The following steps are required to compile the ROS messages used in this projec
     `git clone https://github.com/Ascend-Huawei/HiFly_Drone.git`
 2. Navigate to the project directory<br>
     `cd HiFly_Drone/ros_atlas`<br>
-2. Copy the `catkin_ws` directory to your local catkin workspace. _(Note: the local catkin workspace should have been created in the **Prerequisite** step, otherwise refer to the guide under the prerequisite step.)_ <br>
-    `cp -r ./catkin_ws/src/ ~/catkin_ws/src/`
+2. Copy the `catkin_ws` directory to your local catkin workspace <br>
+    `cp -r ./catkin_ws/src/* ~/catkin_ws/src/`
 3. Navigate to your local catkin workspace _(the catkin_ws in this example is lcoated in the home directory)_ <br>
     `cd ~/catkin_ws`
 4. Compile the source code into ROS packages with `catkin_make` <br>
@@ -55,14 +55,23 @@ This is a simple demonstration on how to run the pipeline with a FaceDetection m
 1. On the Atlas 200 DK, start the MasterNode with <br>
 	`roscore`
 2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
-	`python3 FDNode.py`
+	```
+	cd ros_atlas
+	python3 FDNode.py
+	```
 3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
 	`python3 FDProcessor.py`
 4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
-	```cd ros_atlas/core/```
-    - to run with drone’s live feed: `python3 CameraPublisher.py --live-feed`
-    - to run on a static video: `python3 CameraPubilsher.py —no-live-feed`
-        > NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
+	```
+	cd ros_atlas/core/
+	
+	# to run with drone’s live feed
+	python3 CameraPublisher.py --live-feed
+	
+	# to run without livefeed (on pre-recorded video)
+	python3 CameraPubilsher.py —no-live-feed
+	```
+	> NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
 5. On your external machine (your laptop or desktop), open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
