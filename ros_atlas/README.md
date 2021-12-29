@@ -61,7 +61,8 @@ The following steps are required to compile the ROS messages used in this projec
 <hr>
 
 ## Run Core pipeline with Face Detection 
-This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. Before we begin, ensure **1)**.  the Atlas 200 DK is connected to the drone before you run the pipeline and **2)** you source the `setup.bash` file whenever you open a new terminal.
+This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
+Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**.
 
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
