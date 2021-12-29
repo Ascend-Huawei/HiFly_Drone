@@ -51,38 +51,42 @@ docker pull osrf/ros:noetic-desktop-full
     `source devel/setup.bash`
 
 > Please refer to [this documentation from ROS](http://wiki.ros.org/ROS/Tutorials/CreatingPackage) for more resources on how to create a ROS package, 
+<hr>
 
+## How to run: Core pipeline with FaceDetection model
+This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone.
+> NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
-### Demo: Running the Face Detection pipeline on images from the drone
-`CameraPublisher`, `BaseInference`, `BaseProcessor` are located in:
-`~/HiFly_Drone/ros_atlas/base_nodes/`
-
-1. Start MasterNode in Terminal 1: run `roscore`
-2. Start face-detection inference node in Terminal 2: `python3 FDNode.py`
-3. Start face-detection post-processing node in Terminal 3: `python3 FDProcessor.py`
-4. Start the CameraPublisher once the other nodes are ready in Terminal 4: 
+1. On the Atlas 200 DK, start the MasterNode with <br>
+	`roscore`
+2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node <br>
+	`python3 FDNode.py`
+3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection <br>
+	`python3 FDProcessor.py`
+4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher once the other nodes are ready <br> 
     - to run with drone’s live feed: `python3 CameraPublisher.py --live-feed`
     - to run on a static video: `python3 CameraPubilsher.py —no-live-feed`
-        - also, replace `@CameraPublish.line76` with your pre-recorded video’s file path
-5. [Optional] Open a docker visualization GUI on your local machine:
-    - Refer to the section [(Optional) ROS Docker Installation](#install-ros-docker).
-    ```
-    # On the host, create a container from the native osrf/ros:noetic image. Specify environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)
-	docker run -it --rm --net=host \
-	--env="DISPLAY" \
-	--env="ROS_MASTER_URI=http://192.168.1.2:11311" \
-	--env="QT_X11_NO_MITSHM=1" \
-	--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-	--name noetic-x11-newest \
-	osrf/ros:noetic-desktop-full
+        > NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
+5. [Optional] On your external machine (your laptop or desktop), open a docker visualization GUI <br>
+	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
+		```
+		docker run -it --rm --net=host \
+		--env="DISPLAY" \
+		--env="ROS_MASTER_URI=http://192.168.1.2:11311" \
+		--env="QT_X11_NO_MITSHM=1" \
+		--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+		--name noetic-x11-newest \
+		osrf/ros:noetic-desktop-full
+		```
+	2. **On the host** open another terminal and enable x11-unix-socket connection from the container you just created by disabling access control for Xserver so other clients can join. <br>
+		```
+		export containerId=$(docker ps -l -q)
+		xhost +local:`docker inspect --format='{{ .Config.Hostname }}' $containerId`	
+		```
+   	3. **Within the container** (back to the first terminal) run `rqt` to open the GUI <br>
 
-    # On the host, open another terminal and enable x11-unix-socket connection from the container you just created.
-        export containerId=$(docker ps -l -q)
-	xhost +local:`docker inspect --format='{{ .Config.Hostname }}' $containerId` # disable access control for Xserver so other clients can join
-   
-    # Inside the container, run rqt to open the GUI
-    	rqt
-    ```
+<hr>
+
 ## Code Implementation
 A brief summary on how the core nodes are implemented and how to extend them for your own application. The core nodes are located under `HiFly_Drone/ros_atlas/core`
 
@@ -91,3 +95,26 @@ A brief summary on how the core nodes are implemented and how to extend them for
 | `CameraPublisher.py`   | Main script to publish livestream from drone to the `/tello/cam_data_raw` topic |
 | `BaseInference.py`     | Parent class to be inherited by models class for inference. Listens to `/tello/cam_data_raw`, make inference, and publish the inference results to `/acl_inferece/<model_name>`|
 | `BasePostprocessor.py` | Parent class for postprocessing the inference results. Listens to `/acl_inference/<model_name>`, postprocess, and publish the final results to `/postprocess/<model_name>` |
+
+## Project Extension
+To add your own inference module to this project, you need:
+
+1. An offline model stored in the `model` subdirectory (you can view the projects in [Ascend Samples](https://gitee.com/ascend/samples) for more ideas or use the Ascend Tensor Compiler [ATC] to convert .caffe or .pb models into .om models).
+
+2. Register your offline model's info and metadata to the dictionary in `ros_atlas/utils/params.py`. For example, to add a YOLO face detector module for object detection, you would add a dictionary item under `object_detection`. The dictionary is required to have the following keys to run successfully: `model_width`, `model_height`, `model_path`, `model_processor`
+    ```python
+    "object_detection": {
+        "face_detection": {
+                "model_width": 416,
+                "model_height": 416,
+                "model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
+                "model_processor": "FaceDetectionProcessor",
+                "model_info": "<model description>",
+            }
+    }
+    ```
+    > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
+
+3. Write a custom `<ModelName>Processor` class in `ros_atlas/model_processor/` (inherited from `BaseProcessor.py`) to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
+3. Write a custom `<ModelName>Node` class (inherited from `BaseInference`) to make inference on livestream data from `CameraPublisher.py` and publish the resutls.
+4. Write a custom `<ModelName>Postprocess` class (inherited from `BasePostprocessor`) to postprocess model's outputs from `ExampleNode.py` and publish the final results.
