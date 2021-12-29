@@ -32,8 +32,20 @@ docker pull osrf/ros:noetic-desktop-full
 The following steps are required to compile the ROS messages used in this project. Refer to [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details on how to create a ROS message.
 
 0. Login to Atlas 200 DK from PC (Refer to this guide on how to setup and access). _(Note: it is required to use VScode with Remote-SSH extension to login remotely, otherwise you might not get the video stream to display on your PC.)_
-1. On the Atlas 200 DK, git clone this repository <br>
-    `git clone https://github.com/Ascend-Huawei/HiFly_Drone.git`
+1. Activate the ros-conda environment and create a catkin workspace in the home directory <br>
+    ```
+    cd
+    conda activate ros-noetic
+    mkdir -p ~/catkin_ws/src
+    cd ~/catkin_ws/
+    catkin_make
+    ```
+    Refer to [Creating a catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) for more details on how to create catkin workspace.
+3. On the Atlas 200 DK, return to the home directory and git clone this repository <br>
+    ```
+    cd
+    git clone https://github.com/Ascend-Huawei/HiFly_Drone.git
+    ```
 2. Navigate to the project directory<br>
     `cd HiFly_Drone/ros_atlas`<br>
 2. Copy the `catkin_ws` directory to your local catkin workspace <br>
@@ -49,21 +61,27 @@ The following steps are required to compile the ROS messages used in this projec
 <hr>
 
 ## Run Core pipeline with Face Detection 
-This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone.
+This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. Before we begin, ensure **1)**.  the Atlas 200 DK is connected to the drone before you run the pipeline and **2)** you source the `setup.bash` file whenever you open a new terminal.
+
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
-1. On the Atlas 200 DK, start the MasterNode with <br>
+1. **On the Atlas 200 DK**, start the MasterNode with <br>
 	`roscore`
 2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
 	```
-	cd ros_atlas
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas
 	python3 FDNode.py
 	```
 3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
-	`python3 FDProcessor.py`
+	```
+	source ~/catkin_ws/devel/setup.bash
+	python3 FDProcessor.py
+	```
 4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
 	```
-	cd ros_atlas/core/
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas/core/
 	
 	# to run with drone’s live feed
 	python3 CameraPublisher.py --live-feed
@@ -72,7 +90,8 @@ This is a simple demonstration on how to run the pipeline with a FaceDetection m
 	python3 CameraPubilsher.py —no-live-feed
 	```
 	> NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
-5. On your external machine (your laptop or desktop), open a docker visualization GUI <br>
+	
+5. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
 		docker run -it --rm --net=host \
