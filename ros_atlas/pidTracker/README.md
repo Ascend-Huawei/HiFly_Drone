@@ -6,8 +6,7 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 #### What it is:
 - A PID Face Tracker written in Python3.7.5
 - Mainly based on [ROS smach](http://wiki.ros.org/smach) and [ROS actionlib](http://wiki.ros.org/actionlib)
-- AI-enabled tracking
-
+- AI and Edge-enabled tracking
 
 ## Run a FaceDetection-based PID Tracker
 1. **On the Atlas 200 DK**, start the MasterNode with <br>
@@ -24,14 +23,14 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 	source ~/catkin_ws/devel/setup.bash
 	python3 FDProcessor.py
 	```
-4. Open a fourth terminal on the Atlas 200 DK and run the PIDActionServer under `ros_atlas/pidTracker/` directory <br> 
+4. Open a fourth terminal on the Atlas 200 DK and run the PIDActionServer under the `ros_atlas/pidTracker/` directory <br> 
 	```
 	source ~/catkin_ws/devel/setup.bash
 	cd ~/HiFly_Drone/ros_atlas/pidTracker/
 	python3 action_server_final.py
 	```
  
-5. Open a fifth terminal on the Atlas 200 DK and run the StateMachineClient under `ros_atlas/pidTracker/` directory <br> 
+5. Open a fifth terminal on the Atlas 200 DK and run the StateMachineClient under the `ros_atlas/pidTracker/` directory <br> 
 	```
 	source ~/catkin_ws/devel/setup.bash
 	cd ~/HiFly_Drone/ros_atlas/pidTracker/
