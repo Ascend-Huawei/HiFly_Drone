@@ -29,8 +29,7 @@ docker pull osrf/ros:noetic-desktop-full
 <hr>
 
 ## Setting up ROS packages
-
-> **Prerequisite - Compile custom ROS messages** used in the project by copying `HiFly_Drone/ros_atlas/catkin_ws/src/custom_ros_msg/` to your catkin workspace and compile with `catkin_make` to create the `custom_ros_msg` ROS package. Refer to this guide: [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details.
+The following steps are required to compile the ROS messages used in this project. Refer to [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details on how to create a ROS message.
 
 0. Login to Atlas 200 DK from PC (Refer to this guide on how to setup and access). _(Note: it is required to use VScode with Remote-SSH extension to login remotely, otherwise you might not get the video stream to display on your PC.)_
 1. On the Atlas 200 DK, git clone this repository <br>
@@ -55,11 +54,12 @@ This is a simple demonstration on how to run the pipeline with a FaceDetection m
 
 1. On the Atlas 200 DK, start the MasterNode with <br>
 	`roscore`
-2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node <br>
+2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
 	`python3 FDNode.py`
-3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection <br>
+3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
 	`python3 FDProcessor.py`
-4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher once the other nodes are ready <br> 
+4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
+	```cd ros_atlas/core/```
     - to run with drone’s live feed: `python3 CameraPublisher.py --live-feed`
     - to run on a static video: `python3 CameraPubilsher.py —no-live-feed`
         > NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
