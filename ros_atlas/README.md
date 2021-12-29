@@ -2,21 +2,13 @@
 Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 200 DK and DJI Tello (now with ROS!).
 
 
-<!-- ### Table-of-Contents
-[ROS Conda Environment Installation](#install-robostack-on-atlas-200-dk)<br>
-[(Optional) ROS Docker Installation](#optional-install-ros-docker-on-local-machine)<br>
-[Setting up dependent ROS packages](#setting-up-ros-packages)<br>
-[How to Run Pipeline](#run-core-pipeline-with-face-detection)<br>
-[Code Implementation](#code-implementation)<br>
-[Project Extension](#project-extension)<br>
-
- -->
 ## Install RoboStack on Atlas 200 DK
 `RoboStack` is a pre-built Conda environment for any ROS distributions. See their repo for more info: [RoboStack/ros-noetic](https://github.com/RoboStack/ros-noetic).<br>
 
-Please ensure you have `conda` installed before following the steps below.
+#### Install Conda
+Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/latest/miniconda.html) and choose `Miniconda3 Linux-aarch64 64-bit` to install the compatible version on the 200 DK.
 
-
+#### Create Robotstack conda environment
 1. Create a ros-noetic-desktop conda environment (replace `<env_name>` with your environment name)<br>
  `conda create -n <env_name> ros-noetic-desktop -c conda-forge -c robostack`
 2. Activate the created conda environment<br>
