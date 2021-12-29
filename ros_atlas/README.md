@@ -19,9 +19,9 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
 <hr>
 
 
-## [Optional] Install ROS-Docker on Local Machine
+## Install ROS-Docker on PC
 
-For visualization purposes, we may run a ROS GUI (rqt) from inside a Docker container on an external machine that listens to the topics on the Atlas 200 DK. 
+For visualization purposes, we will run a ROS GUI (rqt) from inside a Docker container on the PC that listens to the ROS topics from the Atlas 200 DK. 
 To do so, pull the official `ros:noetic` image from the `osrf` DockerHub repository on the host machine (your laptop or desktop)
 ```
 docker pull osrf/ros:noetic-desktop-full
@@ -63,7 +63,7 @@ This is a simple demonstration on how to run the pipeline with a FaceDetection m
     - to run with drone’s live feed: `python3 CameraPublisher.py --live-feed`
     - to run on a static video: `python3 CameraPubilsher.py —no-live-feed`
         > NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
-5. [Optional] On your external machine (your laptop or desktop), open a docker visualization GUI <br>
+5. On your external machine (your laptop or desktop), open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
 		docker run -it --rm --net=host \
