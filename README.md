@@ -23,33 +23,41 @@ This project was created while keeping in mind of modularity and fast prototype 
 - [Project: PID Tracker](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)
 <hr>
 
+## ROS implementation
+The following is for simple Python Implementation. For ROS implementation, please refer to [this guide](ros_atlas)
+
 ## Table of Content
 [Installation](#installation)<br>
-[How to run the project](#how-to-run-the-project)<br>
+[How to run the project](#how-to-run-a-simple-project)<br>
 [Code Implementation and how to extend](#code-implementation)<br>
 [Available Modules](#available-modules)
 
 ## Installation
-1. Git clone this repo 
+1. Login to Atlas 200 DK from PC (Refer to this [guide](https://www.notion.so/hiascend/Atlas-200-DK-Setup-Guide-070b907c3c124381bdd6721618b81ef8) on how to setup and access). `Note`, it is required to use `VScode` with `Remote-SSH` extension to login remotely, otherwise you might not get the video stream to display on your PC.
+2. On Atlas 200 DK, git clone this repo 
+    (No internet access? Just try connecting Atlas 200 Dk to a router with Ethernet Cable. For details, check [official document](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK1012/atlased_04_0012.html)) 
 
     `git clone  https://github.com/Ascend-Huawei/HiFly_Drone.git`
 
-2. Navigate to the project directory: 
+3. Navigate to the project directory: 
 
     `cd HiFly_Drone`
 
-3. Create and activate python virutal environment: 
+4. Create and activate python virutal environment: 
 
     `python3 -m venv hifly && source hifly/bin/activate`
 
-4. Install the required dependencies to run this project:
+5. Install the required dependencies to run this project:
 
     `pip3 install -r requirements.txt`
 
-## How to run the project
+## How to run a simple project
 This section covers how to run inference on UAV's camera livefeed. 
 
-1. Refer to the [list of supported modules](#available-modules) below and download the one you wish to run. Once downloaded, store the `.om` file inside the `models` subdirectory. 
+### Prerequisite
+Knowing how to build an AI inference application on Ascend AI processor is required for following steps. Bascially, you will need to firstly get an inference offline model (`.om` file) by converting a pretrained deep learning model (TensorFlow/PyTorch/MindSpore/Caffe) using the `Ascend Tensor Compiler (ATC)` tool. The APIs to run the om model is `AscendCL`. A quick guide and experiment can be found [here](https://www.notion.so/hiascend/Public-Huawei-Ascend-Community-0308233b512e4a55b261dd00e1ad565b). 
+
+1. Get the model: refer to the [list of supported modules](#available-modules) below and get the model you wish to run. Once downloaded, rename the '.om' and store the file inside the `models` subdirectory. 
 
 2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup).
     >Note that you are not limited to only TPLink Wireless Routers 
@@ -68,6 +76,9 @@ This section covers how to run inference on UAV's camera livefeed.
 
     Click [here](#code-implementation) to learn more about what the program is doing in the back
 
+## How to run face tracking project
+1. Download the [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) (`yolo_model.om`), rename it as `face_detection.om`, and store the file inside the `models` subdirectory. 
+2. Follow this [guide](src/pid_controllers) to run the PIDtracker. (Set `--use_ps=True` for live stream on PC)
 
 ## Code Implementation
 
@@ -106,11 +117,12 @@ To add your own inference module to this project, you need:
     > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
 ## Available Modules
-A list of integrated modules
-- [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) <br>
-- [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) <br>
-- [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee) <br>
-- [Hand Gesture Recognition]()
-- [Indoor Depth Estimation](https://gitee.com/HardysJin/samples/tree/master/python/contrib/indoor_depth_estimation_picture)
+A list of integrated modules.
+|   Model   |         Rename the OM            | Terminal Manual
+|:--------:|:-----------------------------:|:-----------------------------:|
+| [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture)|`face_detection.om`|`object_detection`->`face_detection`|
+| [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) |`yolov3.om`|`object_detection`->`object_detection`|
+| [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee)|`hand_detection.om`|`object_detection`->`hand_detection`|
+| [Indoor Depth Estimation](https://gitee.com/HardysJin/samples/tree/master/python/contrib/indoor_depth_estimation_picture)|`indoor_depth_estimation.om`|`depth_estimation`->`indoor_depth_estimation`|
 
 
