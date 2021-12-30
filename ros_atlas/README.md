@@ -2,10 +2,10 @@
 Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 200 DK and DJI Tello (now with ROS!).
 
 
-## Install RoboStack on Atlas 200 DK
+## 🤖 Install RoboStack on Atlas 200 DK
 `RoboStack` is a pre-built Conda environment for any ROS distributions. See their repo for more info: [RoboStack/ros-noetic](https://github.com/RoboStack/ros-noetic).<br>
 
-#### Install Conda
+#### 🐍 Install Conda
 Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/latest/miniconda.html) and choose `Miniconda3 Linux-aarch64 64-bit` to install the compatible version on the 200 DK.
 
 #### Create Robotstack conda environment
@@ -22,7 +22,7 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
 <hr>
 
 
-## Install ROS-Docker on PC
+## 🐳 Install ROS-Docker on PC
 
 For visualization purposes, we will run a ROS GUI (rqt) from inside a Docker container on the PC that listens to the ROS topics from the Atlas 200 DK. 
 To do so, pull the official `ros:noetic` image from the `osrf` DockerHub repository on the host machine (your laptop or desktop)
@@ -91,7 +91,7 @@ Before we begin, **ensure the Atlas 200 DK is connected to the drone before you 
 	python3 CameraPublisher.py --live-feed
 	
 	# to run without livefeed (on pre-recorded video)
-	python3 CameraPubilsher.py —no-live-feed
+	python3 CameraPublisher.py --no-live-feed
 	```
 	> NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
 	
