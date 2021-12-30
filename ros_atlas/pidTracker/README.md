@@ -8,6 +8,15 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 - Mainly based on [ROS smach](http://wiki.ros.org/smach) and [ROS actionlib](http://wiki.ros.org/actionlib)
 - AI and Edge-enabled tracking
 
+#### System Diagram
+
+1. Each `SimpleActionState` in StateMachineClient (left) makes a request to their corresponding `SimpleActionState` in PIDActionServer (middle)
+2. Upon receving a request from `SimpleActionState`, the `SimpleActionServer` executes its callback function to achieve its goal and send a response to the State (fail or success)
+	- Callback functions may publish and subscribe to other nodes for tasks like: Inference and Postprocessing
+3. Upon receving a response from `SimpleActionServer`, the StateMachineClient transitions to its next state based on the outcome of the previous State.
+
+![ROS PID Tracker](https://github.com/jwillow19/HiFly_Drone/blob/new_ros_pid/.github/images/ROS_PID_SM.png)
+
 ## Run a FaceDetection-based PID Tracker
 1. **On the Atlas 200 DK**, start the MasterNode with <br>
 	`roscore`
