@@ -13,7 +13,9 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
  `conda create -n <env_name> ros-noetic-desktop -c conda-forge -c robostack`
 2. Activate the created conda environment<br>
  `conda activate <env_name>`
-3. Verify the environment is working by running the MasterNode<br>
+3. Install the python dependencies with `pip` in the conda environment
+	```pip3 install -r requirements.txt -y```
+5. Verify the environment is working by running the MasterNode<br>
  `roscore`<br>
 > You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
 <hr>
