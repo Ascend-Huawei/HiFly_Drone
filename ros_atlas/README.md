@@ -20,7 +20,13 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
 	```
 	export ROS_MASTER_URI=http://192.168.1.2:11311
 	export ROS_IP=192.168.1.2
+	
+	# The following commands are OPTIONAL 
+	source ~/catkin_ws/devel/setup.bash
+	conda activate <env-name>
 	```
+	> 👏 **NOTE**: The optional commands automatically sources the catkin setup file and activates the ROS conda environment. If you added the optional commands in the `.bashrc` then you do not have to manually run `source ~/catkin_ws/devel/setup.bash` or `conda activate <env-name>` anymore whenever you open a new terminal.
+	
 5. Verify the environment is working by running the MasterNode<br>
  `roscore`<br>
 	> You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
@@ -70,7 +76,9 @@ The following steps are required to compile the ROS messages used in this projec
 
 ## Run Core pipeline with Face Detection 
 This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
-Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**.
+Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**. 
+
+> 👏 **NOTE**: If you added the optional commands in your `.bashrc` then you may ignore the `conda activate <env_name>` and `source ~/catkin_ws/devel/setup.bash` commands below.
 
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
