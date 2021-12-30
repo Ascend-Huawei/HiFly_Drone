@@ -8,7 +8,7 @@ Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 20
 #### 🐍 Install Conda
 Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/latest/miniconda.html) and choose `Miniconda3 Linux-aarch64 64-bit` to install the compatible version on the 200 DK.
 
-#### Create Robotstack conda environment
+#### Create Robotstack conda environment on Atlas 200 DK
 1. Create a ros-noetic-desktop conda environment (replace `<env_name>` with your environment name)<br>
  `conda create -n <env_name> ros-noetic-desktop -c conda-forge -c robostack`
 2. Activate the created conda environment<br>
@@ -16,6 +16,11 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
 3. Install the python dependencies with `pip` in the conda environment <br>
 	```pip3 install -r requirements.txt -y```
 	> NOTE: Ensure conda is using `pip` within its environment and not using the global `pip`. One may check with `which pip` inside the conda env. 
+4. Add the following lines to the `~/.bashrc` file and save the changes<br>
+	```
+	export ROS_MASTER_URI=http://192.168.1.2:11311
+	export ROS_IP=192.168.1.2
+	```
 5. Verify the environment is working by running the MasterNode<br>
  `roscore`<br>
 	> You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
@@ -69,31 +74,36 @@ Before we begin, **ensure the Atlas 200 DK is connected to the drone before you 
 
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
-1. **On the Atlas 200 DK**, start the MasterNode with <br>
-	`roscore`
+1. **On the Atlas 200 DK**, start the MasterNode <br>
+	```
+	conda activate <env_name>
+	roscore
+	```
 2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
 	```
+	conda activate <env_name>
 	source ~/catkin_ws/devel/setup.bash
 	cd ~/HiFly_Drone/ros_atlas
 	python3 FDNode.py
 	```
 3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
 	```
+	conda activate <env_name>
 	source ~/catkin_ws/devel/setup.bash
 	python3 FDProcessor.py
 	```
 4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
 	```
+	conda activate <env_name>
 	source ~/catkin_ws/devel/setup.bash
 	cd ~/HiFly_Drone/ros_atlas/core/
 	
-	# to run with drone’s live feed
+	# to run with drone’s live feed (ensure connection b/w drone and 200DK is established)
 	python3 CameraPublisher.py --live-feed
 	
 	# to run without livefeed (on pre-recorded video)
-	python3 CameraPublisher.py --no-live-feed
+	python3 CameraPublisher.py --no-live-feed --video_path ABS_PATH_TO_VIDEO 
 	```
-	> NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
 	
 5. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
