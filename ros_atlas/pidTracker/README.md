@@ -17,6 +17,15 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 
 ![ROS PID Tracker](https://github.com/jwillow19/HiFly_Drone/blob/new_ros_pid/.github/images/ROS_PID_SM.png)
 
+#### Description of States in PIDTrack
+|   States   |         Description           |
+|:----------:|:-----------------------------:|
+| `CONNECT`  | Connects to the drone. If successful, transition to `TAKEOFF`, else aborted |
+| `TAKEOFF`  | Takeoff once the drone is connected. If successful, transition to `MANUAL`, else aborted |
+| `MANUAL`   | Enable users to control the drone with the keyboard. Server will prompt for user input. If user entered "y" to prompt, server will engage in manual control loop. Inside the control-loop, user can enter "k" to kill the loop and move on to `PID` state or enter "l" to move on to `LAND` state. If user entered "n" to prompt, transition to `PID` state  |
+| `PID`      | Executes the PID control-loop until the user terminates with keyboard interrupt. At which point, it will transition to the `LAND` state |
+| `LAND`     | Lands the drone and abort the state machine |
+
 ## Run a FaceDetection-based PID Tracker
 1. **On the Atlas 200 DK**, start the MasterNode with <br>
 	`roscore`
