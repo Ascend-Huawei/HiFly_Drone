@@ -70,25 +70,28 @@ class CameraPublisher:
             rospy.loginfo("ROS Interrupt.")
             raise err
 
-    def start_publish(self, live_feed) -> None:
+    def start_publish(self, args) -> None:
         cap = None
-        if not live_feed:
-            cap = cv2.VideoCapture("/home/HwHiAiUser/HiFly_Drone/data/video.avi")
+        if not args.live_feed:
+            cap = cv2.VideoCapture(args.video_path)
             rospy.loginfo(f"CameraPublisher - Default video read FPS={round(cap.get(cv2.CAP_PROP_FPS), 30)}")
             if not cap.isOpened(): 
                 rospy.signal_shutdown("Shutting down CameraPuyblisher. Reason: Error opening video file.")
         
         while not rospy.is_shutdown():
-            image_data = self._uav.get_frame_read().frame if live_feed else cap.read()[1]
+            image_data = self._uav.get_frame_read().frame if args.live_feed else cap.read()[1]
             if image_data is None:
                 rospy.signal_shutdown("Frame is None. Shutting down CameraPublisher.")
                 return
             
             # ensure image_data.shape==(960, 720) if not live-stream
+            print(image_data.shape)
             if image_data.shape != (960, 720):
                 image_data = cv2.resize(image_data, (960, 720))
+            
 
-            # uncomment to resize before publishing (faster runtime) - also need to specify expect_img_size in Postprocessor
+            # uncomment to resize before publishing (faster runtime)
+            #  NOTE: if enable, will also need to specify expect_img_size in Postprocessor
             # image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
             self.convert_and_pubish(image_data)
             
@@ -100,18 +103,16 @@ class CameraPublisher:
 
 
 if __name__ == "__main__":
-    uav = None
-
     parser = argparse.ArgumentParser(description="CameraPublisher ROS Node")
     parser.add_argument("--fps", default=10, type=int, help='Camera publisher FPS (default: 30)')
     parser.add_argument("--live-feed", dest='live_feed', action='store_true', help='Use live-feed from drone')
     parser.add_argument("--no-live-feed", dest='live_feed', action='store_false', help='Run on pre-recorded video')
+    parser.add_argument("--video_path", type=str, help='Absolute path of recorded video')
     args = parser.parse_args()
 
-    if args.live_feed:
-        uav = connect_uav()
+    uav = connect_uav() if args.live_feed else None
     try:
         imgPub = CameraPublisher(uav=uav, fps=args.fps)
-        imgPub.start_publish(live_feed=args.live_feed)
+        imgPub.start_publish(args)
     except KeyboardInterrupt as e:
         rospy.signal_shutdown("Shutting down CameraPuyblisher. Keyboard terminate")

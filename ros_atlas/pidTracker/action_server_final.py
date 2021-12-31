@@ -159,7 +159,7 @@ class PIDActionServer:
         if engage_manual == 'n':
             rospy.loginfo("Skipping manual control, starting PIDTrack mode")
             self._manual_sas.set_succeeded()
-        elif engage_manual == 'y':
+        else:
             rospy.loginfo("Manual Control engaged:")
             rospy.loginfo("Listen Key: \n \
                             w a s d: move forward/left/back/right \n \
@@ -199,9 +199,6 @@ class PIDActionServer:
                         print("something wrong; key: " + key)
                         self._uav.land()
                         raise err
-            else:
-
-
 
     def execute_search_cb(self, goal) -> None:
         """Class method for handling search mode
@@ -245,7 +242,6 @@ class PIDActionServer:
         elif self._area > self.setpoint_area[1]:
             forward_backward_velocity = -20
 
-        # uncomment below to execute Actuator - control drone's motion to converge to setpoint by sending rc control commands
         rospy.loginfo(f"[Tracking] Actuator command: {left_right_velocity}, {forward_backward_velocity}, {up_down_velocity}, {yaw_velocity}")
         self._uav.send_rc_control(left_right_velocity, forward_backward_velocity, up_down_velocity, yaw_velocity)
 

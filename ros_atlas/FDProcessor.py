@@ -105,7 +105,8 @@ class FDPostNode(Postprocessor):
 if __name__ == "__main__":
     print(f"FDProcessor pid: {os.getpid()}")
     fd_postprocess_node = FDPostNode()
-    fd_processor = fd_postprocess_node.load_processor(model_name="face_detection", expected_image_shape=(360, 480))
+    # fd_processor = fd_postprocess_node.load_processor(model_name="face_detection", expected_image_shape=(360, 480))
+    fd_processor = fd_postprocess_node.load_processor(model_name="face_detection", expected_image_shape=(720, 960))
     fd_postprocess_node.init()
     try:
         fd_postprocess_node.run_pid(fd_processor, img_format='rgb8')
