@@ -208,7 +208,7 @@ class PIDActionServer:
             None
         """
         rospy.loginfo('Searching...')
-        # Implement search-function here
+        self._uav.send_rc_control(0,0,0,20)
     
     def execute_track_cb(self, goal) -> None:
         """Class method for handling tracking mode
