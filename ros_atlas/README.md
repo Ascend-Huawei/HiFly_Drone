@@ -2,24 +2,38 @@
 Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 200 DK and DJI Tello (now with ROS!).
 
 
-## Install RoboStack on Atlas 200 DK
+## 🤖 Install RoboStack on Atlas 200 DK
 `RoboStack` is a pre-built Conda environment for any ROS distributions. See their repo for more info: [RoboStack/ros-noetic](https://github.com/RoboStack/ros-noetic).<br>
 
-#### Install Conda
+#### 🐍 Install Conda
 Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/latest/miniconda.html) and choose `Miniconda3 Linux-aarch64 64-bit` to install the compatible version on the 200 DK.
 
-#### Create Robotstack conda environment
+#### Create Robotstack conda environment on Atlas 200 DK
 1. Create a ros-noetic-desktop conda environment (replace `<env_name>` with your environment name)<br>
  `conda create -n <env_name> ros-noetic-desktop -c conda-forge -c robostack`
 2. Activate the created conda environment<br>
  `conda activate <env_name>`
-3. Verify the environment is working by running the MasterNode<br>
+3. Install the python dependencies with `pip` in the conda environment <br>
+	```pip3 install -r requirements.txt -y```
+	> NOTE: Ensure conda is using `pip` within its environment and not using the global `pip`. One may check with `which pip` inside the conda env. 
+4. Add the following lines to the `~/.bashrc` file and save the changes<br>
+	```
+	export ROS_MASTER_URI=http://192.168.1.2:11311
+	export ROS_IP=192.168.1.2
+	
+	# The following commands are OPTIONAL 
+	source ~/catkin_ws/devel/setup.bash
+	conda activate <env-name>
+	```
+	> 👏 **NOTE**: The optional commands automatically sources the catkin setup file and activates the ROS conda environment. If you added the optional commands in the `.bashrc` then you do not have to manually run `source ~/catkin_ws/devel/setup.bash` or `conda activate <env-name>` anymore whenever you open a new terminal.
+	
+5. Verify the environment is working by running the MasterNode<br>
  `roscore`<br>
-> You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
+	> You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
 <hr>
 
 
-## Install ROS-Docker on PC
+## 🐳 Install ROS-Docker on PC
 
 For visualization purposes, we will run a ROS GUI (rqt) from inside a Docker container on the PC that listens to the ROS topics from the Atlas 200 DK. 
 To do so, pull the official `ros:noetic` image from the `osrf` DockerHub repository on the host machine (your laptop or desktop)
@@ -29,16 +43,27 @@ docker pull osrf/ros:noetic-desktop-full
 <hr>
 
 ## Setting up ROS packages
-
-> **Prerequisite - Compile custom ROS messages** used in the project by copying `HiFly_Drone/ros_atlas/catkin_ws/src/custom_ros_msg/` to your catkin workspace and compile with `catkin_make` to create the `custom_ros_msg` ROS package. Refer to this guide: [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details.
+The following steps are required to compile the ROS messages used in this project. Refer to [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details on how to create a ROS message.
 
 0. Login to Atlas 200 DK from PC (Refer to this guide on how to setup and access). _(Note: it is required to use VScode with Remote-SSH extension to login remotely, otherwise you might not get the video stream to display on your PC.)_
-1. On the Atlas 200 DK, git clone this repository <br>
-    `git clone https://github.com/Ascend-Huawei/HiFly_Drone.git`
+1. Activate the ros-conda environment and create a catkin workspace in the home directory <br>
+    ```
+    cd
+    conda activate ros-noetic
+    mkdir -p ~/catkin_ws/src
+    cd ~/catkin_ws/
+    catkin_make
+    ```
+    Refer to [Creating a catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) for more details on how to create catkin workspace.
+3. On the Atlas 200 DK, return to the home directory and git clone this repository <br>
+    ```
+    cd
+    git clone https://github.com/Ascend-Huawei/HiFly_Drone.git
+    ```
 2. Navigate to the project directory<br>
     `cd HiFly_Drone/ros_atlas`<br>
-2. Copy the `catkin_ws` directory to your local catkin workspace. _(Note: the local catkin workspace should have been created in the **Prerequisite** step, otherwise refer to the guide under the prerequisite step.)_ <br>
-    `cp -r ./catkin_ws/src/ ~/catkin_ws/src/`
+2. Copy the `catkin_ws` directory to your local catkin workspace <br>
+    `cp -r ./catkin_ws/src/* ~/catkin_ws/src/`
 3. Navigate to your local catkin workspace _(the catkin_ws in this example is lcoated in the home directory)_ <br>
     `cd ~/catkin_ws`
 4. Compile the source code into ROS packages with `catkin_make` <br>
@@ -50,20 +75,45 @@ docker pull osrf/ros:noetic-desktop-full
 <hr>
 
 ## Run Core pipeline with Face Detection 
-This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone.
+This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
+Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**. 
+
+> 👏 **NOTE**: If you added the optional commands in your `.bashrc` then you may ignore the `conda activate <env_name>` and `source ~/catkin_ws/devel/setup.bash` commands below.
+
 > NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
-1. On the Atlas 200 DK, start the MasterNode with <br>
-	`roscore`
-2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node <br>
-	`python3 FDNode.py`
-3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection <br>
-	`python3 FDProcessor.py`
-4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher once the other nodes are ready <br> 
-    - to run with drone’s live feed: `python3 CameraPublisher.py --live-feed`
-    - to run on a static video: `python3 CameraPubilsher.py —no-live-feed`
-        > NOTE: if running on a static video, replace `@CameraPublish.line76` with your pre-recorded video’s file path
-5. On your external machine (your laptop or desktop), open a docker visualization GUI <br>
+1. **On the Atlas 200 DK**, start the MasterNode <br>
+	```
+	conda activate <env_name>
+	roscore
+	```
+2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas
+	python3 FDNode.py
+	```
+3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	python3 FDProcessor.py
+	```
+4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas/core/
+	
+	# to run with drone’s live feed (ensure connection b/w drone and 200DK is established)
+	python3 CameraPublisher.py --live-feed
+	
+	# to run without livefeed (on pre-recorded video)
+	python3 CameraPublisher.py --no-live-feed --video_path ABS_PATH_TO_VIDEO 
+	```
+	
+5. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
 		docker run -it --rm --net=host \
