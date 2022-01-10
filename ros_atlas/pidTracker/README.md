@@ -15,7 +15,7 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 	- Callback functions may publish and subscribe to other nodes for tasks like: Inference and Postprocessing
 3. Upon receving a response from `SimpleActionServer`, the StateMachineClient transitions to its next state based on the outcome of the previous State.
 
-![ROS PID Tracker](https://github.com/jwillow19/HiFly_Drone/blob/new_ros_pid/.github/images/ROS_PID_SM.png)
+![ROS PID Tracker](https://github.com/jwillow19/HiFly_Drone/blob/main/.github/images/PID_SM.png)
 
 #### Description of States in PIDTrack
 |   States   |         Description           |
