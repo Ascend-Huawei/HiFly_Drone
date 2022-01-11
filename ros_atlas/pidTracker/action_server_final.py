@@ -141,7 +141,7 @@ class PIDActionServer:
 
                         self._init_sas.set_succeeded()
                 except Exception as err:
-                    print(f"Trying again... {time.time()-start_time}s remaining.")
+                    print(f"Trying again... {time.time()-start_time}s elapsed.")
                     continue
 
         # Goal: Takeoff
