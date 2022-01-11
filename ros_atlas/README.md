@@ -136,6 +136,8 @@ Before we begin, **ensure the Atlas 200 DK is connected to the drone before you 
 ## Code Implementation
 A brief summary on how the core nodes are implemented and how to extend them for your own application. The core nodes are located under `HiFly_Drone/ros_atlas/core`
 
+![ROS Core Nodes](https://github.com/jwillow19/HiFly_Drone/blob/main/.github/images/ros_integration.png)
+
 |   File   |         Description           |
 |:--------:|:-----------------------------:|
 | `CameraPublisher.py`   | Main script to publish livestream from drone to the `/tello/cam_data_raw` topic |
