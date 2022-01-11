@@ -10,10 +10,9 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 
 #### System Diagram
 
-1. Each `SimpleActionState` in StateMachineClient (left) makes a request to their corresponding `SimpleActionState` in PIDActionServer (middle)
-2. Upon receving a request from `SimpleActionState`, the `SimpleActionServer` executes its callback function to achieve its goal and send a response to the State (fail or success)
-	- Callback functions may publish and subscribe to other nodes for tasks like: Inference and Postprocessing
-3. Upon receving a response from `SimpleActionServer`, the StateMachineClient transitions to its next state based on the outcome of the previous State.
+1. Each `SimpleActionState` in StateMachineClient (left) makes a request to their corresponding `SimpleActionServer` in PIDActionServer (middle)
+2. Upon receving a request from `SimpleActionState`, the `SimpleActionServer` executes its callback function to achieve its goal and send a response back to the state machine (succeeded, preempted, aborted)
+3. The StateMachineClient transitions to the next state depending on the response from 'SimpleActionServer'.
 
 ![ROS PID Tracker](https://github.com/jwillow19/HiFly_Drone/blob/main/.github/images/PID_SM.png)
 
@@ -23,8 +22,8 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 | `CONNECT`  | Connects to the drone. If successful, transition to `TAKEOFF`, else aborted |
 | `TAKEOFF`  | Takeoff once the drone is connected. If successful, transition to `MANUAL`, else aborted |
 | `MANUAL`   | Enable users to control the drone with the keyboard. Server will prompt for user input. If user entered "y" to prompt, server will engage in manual control loop. Inside the control-loop, user can enter "k" to kill the loop and move on to `PID` state or enter "l" to move on to `LAND` state. If user entered "n" to prompt, transition to `PID` state  |
-| `PID`      | Executes the PID control-loop until the user terminates with keyboard interrupt. At which point, it will transition to the `LAND` state |
-| `LAND`     | Lands the drone and abort the state machine |
+| `PID`      | Executes the PID control-loop until the user terminates with keyboard interrupt or reached search timeout. At which point, it will transition to the `LAND` state |
+| `LAND`     | Lands the drone. Prompt user if they would like to re-run the tracker (user input "y") or abort the state machine (user input "n") |
 
 ## Run a FaceDetection-based PID Tracker
 1. **On the Atlas 200 DK**, start the MasterNode with <br>
@@ -39,6 +38,7 @@ PID Tello-Tracker is a pseudo-tracking algorithm that is based on a PID Controll
 3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
 	```
 	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas
 	python3 FDProcessor.py
 	```
 4. Open a fourth terminal on the Atlas 200 DK and run the PIDActionServer under the `ros_atlas/pidTracker/` directory <br> 
@@ -81,5 +81,5 @@ While the ActionServer takes care most of the logic to achieve the goal(s) set o
 
 |   File   |         Description           |
 |:--------:|:-----------------------------:|
-| `action_server_final.py`          | ROS ActionServer that response to the different requests from various states coming from the client side. Mainly consists of several `SimpleActionServer` (SAS), each SAS answers to their state(s). |
-| `action_client_final.py`          | State Machine that plans the transition of states for the PID Tracking application. The state machine uses `SimpleActionState` to makes request(s) to their corresponding SAS |
+| `action_server_final.py`          | Main class `PIDActionServer` contains the `SimpleActionServers` and their callback functions. Response to requests from various states coming from the client side and map the requests to the corresponding `SimpleActionServer`  |
+| `action_client_final.py`          | State Machine whichs facilitates the transition of states for the PID Tracking application. Composed of several `SimpleActionState`s to regulate the different modes of the application through sending request(s) to their corresponding SAS |
