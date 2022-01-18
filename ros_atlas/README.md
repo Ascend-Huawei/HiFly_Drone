@@ -14,8 +14,8 @@ Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/
 2. Activate the created conda environment<br>
  `conda activate <env_name>`
 3. Install the python dependencies with `pip` in the conda environment <br>
-	```pip3 install -r requirements.txt -y```
-	> NOTE: Ensure conda is using `pip` within its environment and not using the global `pip`. One may check with `which pip` inside the conda env. 
+	```pip3 install -r requirements.txt```
+	> NOTE: Ensure conda is using `pip` within its environment and not using the global `pip`. One may check with `which -a pip` and use the `pip` version inside the conda env.
 4. Add the following lines to the `~/.bashrc` file and save the changes<br>
 	```
 	export ROS_MASTER_URI=http://192.168.1.2:11311
