@@ -21,15 +21,13 @@ from rospy.exceptions import ROSInitException
 
 
 class Postprocessor:
-    """Postprocessor - Base postprocessing class with abstract method for formating model-dependent message types.
+    """Postprocessor - Base postprocessing class with abstract methods for formating model-dependent message types.
     Functions
         + Handles ROS nodes related operations: Loading corresponding processor, ROS node initialization, message type formatting, faciliitate node communications, shutdown protocol
         + Subscribes to @topic:/acl_inference/<model_name>
         + Loads corresponding Processing module from <model_name>Processor -- Inherits the <model_name>Processor class but does NOT use AclResource to spawn Model.
-    
     @params
-        expected_img_shape      expected image shape of incoming frame. Default is None (uses tello camera dimensions)  @type: Bool
-    
+        expected_img_shape       expected image shape of incoming frame. Default: None (in which case, uses tello camera dimensions)  @type=Tuple
     Returns
         None
     """
@@ -41,14 +39,14 @@ class Postprocessor:
         self._stamp_dict = dict()
         self._sub_cb_times = list()
         self._iteration_times = list()
-    
-        rospy.on_shutdown(self.shutdown)
 
-    def load_processor(self, model_name):
+        rospy.on_shutdown(self.shutdown)
+    
+    def load_processor(self, model_name, expected_image_shape=None):
         mp, model_info = load_model_processor(model_name)
         self._model_info = model_info
         self._model_name = model_name
-        return mp(params=model_info, process_only=True)
+        return mp(params=model_info, expected_image_shape=expected_image_shape, process_only=True)
     
     def init(self):
         try:

@@ -53,7 +53,8 @@ class BaseInferenceNode:
     def init(self):
         """Node initialization. Set Subscriber(s) and Publisher."""
         try:
-            rospy.init_node('acl_inference_node', anonymous=True)
+            # rospy.init_node('acl_inference_node', anonymous=True)
+            rospy.init_node('acl_inference_node')
             rospy.loginfo("ACLInference Node initializing...")
 
             self._inference_topic = f"/acl_inference/{self._model_name}"

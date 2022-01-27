@@ -38,7 +38,7 @@ class DecisionFilter:
         else:
             # get the mode result, then release
             self.mode_inference = self._release()
-            print(f"Mode inference result: {self.mode_inference}")
+            print(f"[DecisionFilter] Mode inference result: {self.mode_inference}")
             return self.mode_inference
         
     def _enqueue(self, result):
@@ -51,7 +51,6 @@ class DecisionFilter:
         if result in self.inference_tracker:
             self.inference_tracker[result] += 1
         else:
-            print(f"Detected new gesture: {result}")
             self.inference_tracker[result] = 1
 
     def _release(self):
@@ -61,8 +60,7 @@ class DecisionFilter:
         if "Presence" in self.inference_tracker and (self.inference_tracker["Presence"] / self.max_qsize) >= 0.6:
             distilled_result = "Presence"
         
-        print("Release: ", self.inference_tracker)
-        print("Max queue size reached, release elements in queue for next batch, reset hash table...")
+        print("[DecisionFilter] Release: ", self.inference_tracker)
         with self.q.mutex:
             self.q.queue.clear()
         self.inference_tracker = dict()

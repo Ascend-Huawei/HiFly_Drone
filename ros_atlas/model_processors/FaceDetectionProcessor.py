@@ -38,9 +38,7 @@ class ModelProcessor(BaseProcessor):
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
         outputs = self.model.execute([preprocessed])
-        
-        postprocess_start = time.process_time()
-        result = self.postprocess(frame, outputs)
+        result = self.postprocess(outputs, frame)
         return result
 
     def preprocess(self, frame):
@@ -55,13 +53,27 @@ class ModelProcessor(BaseProcessor):
         return img_new
         
     def postprocess(self, outputs, frame):
+        # variables for PID face tracker
+        process_var_bbox_area = 0
+        cx, cy = float("-inf"), float("-inf")
+
         box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         nparryList, boxList = get_box_img(frame, box_axis)
 
         if len(nparryList) > 0:
-            for box in boxList:
+            try:
+            # for box in boxList:  # should be box = boxList[0] -- single box
+                box = boxList[0]
+                area = (box[1] - box[0]) * (box[3] - box[2])
+                if area > process_var_bbox_area:
+                    cx = (box[0] + box[1]) // 2
+                    cy = (box[2] + box[3]) // 2
+                    process_var_bbox_area = area
                 cv2.rectangle(frame, (box[0], box[2]),  (box[1], box[3]), (255, 0, 0), 4) 
-        return frame 
+            except KeyError as e:
+                print(e)
+                
+        return frame, (process_var_bbox_area, cx, cy) 
     
     def get_anchors(self):
         """return anchors

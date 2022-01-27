@@ -1,0 +1,12 @@
+# Goal
+int32 move_forward
+int32 move_left
+int32 move_backward
+int32 move_right
+bool ignore_cancel
+---
+# Result
+bool result
+---
+# Feedback
+int32 movement_feedback
