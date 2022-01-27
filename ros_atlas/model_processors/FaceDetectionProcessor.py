@@ -38,9 +38,7 @@ class ModelProcessor(BaseProcessor):
     def predict(self, frame):
         preprocessed = self.preprocess(frame)
         outputs = self.model.execute([preprocessed])
-        
-        postprocess_start = time.process_time()
-        result = self.postprocess(frame, outputs)
+        result = self.postprocess(outputs, frame)
         return result
 
     def preprocess(self, frame):
@@ -55,10 +53,9 @@ class ModelProcessor(BaseProcessor):
         return img_new
         
     def postprocess(self, outputs, frame):
-        # TO REMOVE ###########################################
+        # variables for PID face tracker
         process_var_bbox_area = 0
         cx, cy = float("-inf"), float("-inf")
-        # TO REMOVE ###########################################
 
         box_axis, box_score = yolo_eval(outputs, self.anchors, self.num_classes, self.image_shape)
         nparryList, boxList = get_box_img(frame, box_axis)
