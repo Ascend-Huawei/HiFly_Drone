@@ -27,14 +27,14 @@ class FaceDetectorNode:
         self._stamp_dict = dict()
         self._sub_cb_times = list()
         self._iteration_times = list()
-
         rospy.on_shutdown(self.shutdown)
 
     def load_model(self, model_name):
         mp, mp_info = load_model_processor(model_name)
         self._model_info = mp_info
         self._model_name = model_name
-        return mp(params=mp_info)
+        # return mp(params=mp_info)
+        return mp(params=mp_info, expected_image_shape=(360, 480))
 
     def init(self):
         """Node initialization. Set Subscriber(s) and Publisher."""
@@ -48,7 +48,7 @@ class FaceDetectorNode:
 
             self.cam_data_sub = rospy.Subscriber("/tello/cam_data_raw", Image, self.image_callback, queue_size=1, buff_size=2**24)
             self.inference_pub = rospy.Publisher(self._inference_topic, Image, queue_size=1)
-            self.inference_pub_rate = rospy.Rate(10) 
+            self.inference_pub_rate = rospy.Rate(14)
             self.pub_counter = 0
             rospy.loginfo("ACLInference Node: Publisher & Subscriber initialized.")
         except ROSInitException as err:
@@ -89,14 +89,15 @@ class FaceDetectorNode:
                 if not self.image_queue.empty():
                     image = self.image_queue.get()
                     result_frame = self.model.predict(image)
+                    # cv2.imwrite('test_out.png', result_frame)
                     img_msg = CvBridge().cv2_to_imgmsg(result_frame, "rgb8")
                     # ros_inference_msg = self.construct_ros_msg(model_output, image)
 
                     self.inference_pub.publish(img_msg)
                     self.pub_counter += 1
                     print(f"[{self.pub_counter}]: Published model output(s) to topic: {self._inference_topic}")
-                
-                    self.inference_pub_rate.sleep()
+
+                    # self.inference_pub_rate.sleep()
                     self._iteration_times.append(time.time() - st)
                 else:
                     continue
