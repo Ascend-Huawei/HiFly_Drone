@@ -46,6 +46,8 @@ class CameraPublisher:
 
     def convert_and_pubish(self, image_data) -> None:
         st = time.time()
+        image_data = cv2.resize(image_data, (0,0), fx = 0.5, fy = 0.5)
+
         # img_msg = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
         try:
             img_msg = CvBridge().cv2_to_imgmsg(image_data, "rgb8")
