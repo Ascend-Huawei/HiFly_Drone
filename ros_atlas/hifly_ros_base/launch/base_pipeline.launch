@@ -1,0 +1,19 @@
+<launch>
+
+    <arg name="vid_in"/>
+    <arg name="model"/>
+    
+    <node pkg='ros_atlas' type='ACLInference.py' name='ACLInference' output='screen'>
+        <param name="model" type="str" value="$(arg model)" />
+        <!-- <param name="pub_rate" type="double" value="14.0" /> -->
+    </node>
+    
+    <node pkg='ros_atlas' type='CameraPublisher.py' name='CameraPublisher' respawn='true' output='screen'>
+        <!-- /face_detector/uav_cam/pub_rate -->
+        <param name="use_uav" type="bool" value="False" />
+        <param name="pub_rate" type="double" value="10.0" />
+        <param name="video_input" value="$(arg vid_in)" />
+        <param name="topic_name" type="str" value="/tello/cam_data_raw" />
+    </node>
+
+</launch>
