@@ -1,0 +1,5 @@
+<launch>
+
+    <include file="$(find hifly_ros_base)/launch/base_pipelien.launch" />
+
+</launch>

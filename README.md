@@ -1,106 +1,155 @@
-# Atlas 200 DK x DJI Tello Ryze
-Introducing the Ascend Eco-Platform for Intelligent UAVs - Enabled by the Atlas 200 DK and DJI Tello to achieve real-time deep learning solutions and fast prototyping to developers.
-This project was created while keeping in mind of modularity and fast prototype development. We hope to build ready-to-use modularized capabilities for developers interested in taking deep learning to the realm of UAVs.
+# ROS Atlas HiFly
+Introducing the Ascend Eco-Platform for Intelligent UAVs enabled by the Atlas 200 DK and DJI Tello (now with ROS!).
 
-### Useful Links
-[Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
-[Ascend Samples](https://gitee.com/ascend/samples) <br>
-[🐶 Ascend ModelZoo](https://www.hiascend.com/en/software/modelzoo)<br>
-[📹 HiFly Introduction YouTube Video](https://youtu.be/zZQy9RBLlEo)<br>
-[🚁 HiFly PID Tracker Video](https://www.youtube.com/watch?v=Gix8SquAKGM&t=2s)<br>
 
-### Hardware Requirements
-- [Atlas 200 DK](https://e.huawei.com/ph/products/cloud-computing-dc/atlas/atlas-200)
-- [DJI Tello Ryze](https://www.ryzerobotics.com/tello)
-- Wireless Router (TP-Link TL-WR902AC)
+## 🤖 Install RoboStack on Atlas 200 DK
+`RoboStack` is a pre-built Conda environment for any ROS distributions. See their repo for more info: [RoboStack/ros-noetic](https://github.com/RoboStack/ros-noetic).<br>
 
-### 📓 HiFly Wiki
-- [RoadMap](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Roadmap)
-- [How to Contribute](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/How-to-Contribute)
-- [Project Ideas](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Requested-Extensions)
-- [TP Link Wireless Router Setup](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup)
-- [Project: Parallel Inference](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Multiprocess-Inference)
-- [Project: PID Tracker](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/Closed-Loop-PID-Tracker)
+#### 🐍 Install Conda
+Pleas visit the [official link (Miniconda Installers)](https://docs.conda.io/en/latest/miniconda.html) and choose `Miniconda3 Linux-aarch64 64-bit` to install the compatible version on the 200 DK.
+
+#### Create Robotstack conda environment on Atlas 200 DK
+1. Create a ros-noetic-desktop conda environment (replace `<env_name>` with your environment name)<br>
+ `conda create -n <env_name> ros-noetic-desktop -c conda-forge -c robostack`
+2. Activate the created conda environment<br>
+ `conda activate <env_name>`
+3. Install the python dependencies with `pip` in the conda environment <br>
+	```pip3 install -r requirements.txt -y```
+	> NOTE: Ensure conda is using `pip` within its environment and not using the global `pip`. One may check with `which pip` inside the conda env. 
+4. Add the following lines to the `~/.bashrc` file and save the changes<br>
+	```
+	export ROS_MASTER_URI=http://192.168.1.2:11311
+	export ROS_IP=192.168.1.2
+	
+	# The following commands are OPTIONAL 
+	source ~/catkin_ws/devel/setup.bash
+	conda activate <env-name>
+	```
+	> 👏 **NOTE**: The optional commands automatically sources the catkin setup file and activates the ROS conda environment. If you added the optional commands in the `.bashrc` then you do not have to manually run `source ~/catkin_ws/devel/setup.bash` or `conda activate <env-name>` anymore whenever you open a new terminal.
+	
+5. Verify the environment is working by running the MasterNode<br>
+ `roscore`<br>
+	> You should see the standard `roscore` output on your terminal, otherwise you should refer to `RoboStack/ros-noetic`'s README for a more detailed installation guide
 <hr>
 
-## ROS implementation
-The following is for simple Python Implementation. For ROS implementation, please refer to [this guide](ros_atlas)
 
-## Table of Content
-[Installation](#installation)<br>
-[How to run the project](#how-to-run-a-simple-project)<br>
-[Code Implementation and how to extend](#code-implementation)<br>
-[Available Modules](#available-modules)
+## 🐳 Install ROS-Docker on PC
 
-## Installation
-1. Login to Atlas 200 DK from PC (Refer to this [guide](https://www.notion.so/hiascend/Atlas-200-DK-Setup-Guide-070b907c3c124381bdd6721618b81ef8) on how to setup and access). `Note`, it is required to use `VScode` with `Remote-SSH` extension to login remotely, otherwise you might not get the video stream to display on your PC.
-2. On Atlas 200 DK, git clone this repo 
-    (No internet access? Just try connecting Atlas 200 Dk to a router with Ethernet Cable. For details, check [official document](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK1012/atlased_04_0012.html)) 
+For visualization purposes, we will run a ROS GUI (rqt) from inside a Docker container on the PC that listens to the ROS topics from the Atlas 200 DK. 
+To do so, pull the official `ros:noetic` image from the `osrf` DockerHub repository on the host machine (your laptop or desktop)
+```
+docker pull osrf/ros:noetic-desktop-full
+```
+<hr>
 
-    `git clone  https://github.com/Ascend-Huawei/HiFly_Drone.git`
+## Setting up ROS packages
+The following steps are required to compile the ROS messages used in this project. Refer to [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details on how to create a ROS message.
 
-3. Navigate to the project directory: 
+0. Login to Atlas 200 DK from PC (Refer to this guide on how to setup and access). _(Note: it is required to use VScode with Remote-SSH extension to login remotely, otherwise you might not get the video stream to display on your PC.)_
+1. Activate the ros-conda environment and create a catkin workspace in the home directory <br>
+    ```
+    cd
+    conda activate ros-noetic
+    mkdir -p ~/catkin_ws/src
+    cd ~/catkin_ws/
+    catkin_make
+    ```
+    Refer to [Creating a catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) for more details on how to create catkin workspace.
+3. On the Atlas 200 DK, return to the home directory and git clone this repository <br>
+    ```
+    cd
+    git clone https://github.com/Ascend-Huawei/HiFly_Drone.git
+    ```
+2. Navigate to the project directory<br>
+    `cd HiFly_Drone/ros_atlas`<br>
+2. Copy the `catkin_ws` directory to your local catkin workspace <br>
+    `cp -r ./catkin_ws/src/* ~/catkin_ws/src/`
+3. Navigate to your local catkin workspace _(the catkin_ws in this example is lcoated in the home directory)_ <br>
+    `cd ~/catkin_ws`
+4. Compile the source code into ROS packages with `catkin_make` <br>
+    `catkin_make`
+5. Add the workspace to your ROS environment by sourcing the generated setup file <br>
+    `source devel/setup.bash`
 
-    `cd HiFly_Drone`
+> Please refer to [this documentation from ROS](http://wiki.ros.org/ROS/Tutorials/CreatingPackage) for more resources on how to create a ROS package, 
+<hr>
 
-4. Create and activate python virutal environment: 
+## Run Core pipeline with Face Detection 
+This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
+Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**. 
 
-    `python3 -m venv hifly && source hifly/bin/activate`
+> 👏 **NOTE**: If you added the optional commands in your `.bashrc` then you may ignore the `conda activate <env_name>` and `source ~/catkin_ws/devel/setup.bash` commands below.
 
-5. Install the required dependencies to run this project:
+> NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
 
-    `pip3 install -r requirements.txt`
+1. **On the Atlas 200 DK**, start the MasterNode <br>
+	```
+	conda activate <env_name>
+	roscore
+	```
+2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas
+	python3 FDNode.py
+	```
+3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	python3 FDProcessor.py
+	```
+4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
+	```
+	conda activate <env_name>
+	source ~/catkin_ws/devel/setup.bash
+	cd ~/HiFly_Drone/ros_atlas/core/
+	
+	# to run with drone’s live feed (ensure connection b/w drone and 200DK is established)
+	python3 CameraPublisher.py --live-feed
+	
+	# to run without livefeed (on pre-recorded video)
+	python3 CameraPublisher.py --no-live-feed --video_path ABS_PATH_TO_VIDEO 
+	```
+	
+5. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
+	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
+		```
+		docker run -it --rm --net=host \
+		--env="DISPLAY" \
+		--env="ROS_MASTER_URI=http://192.168.1.2:11311" \
+		--env="QT_X11_NO_MITSHM=1" \
+		--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+		--name noetic-x11-newest \
+		osrf/ros:noetic-desktop-full
+		```
+	2. **On the host** open another terminal and enable x11-unix-socket connection from the container you just created by disabling access control for Xserver so other clients can join. <br>
+		```
+		export containerId=$(docker ps -l -q)
+		xhost +local:`docker inspect --format='{{ .Config.Hostname }}' $containerId`	
+		```
+   	3. **Within the container** (back to the first terminal) run `rqt` to open the GUI <br>
 
-## How to run a simple project
-This section covers how to run inference on UAV's camera livefeed. 
-
-### Prerequisite
-Knowing how to build an AI inference application on Ascend AI processor is required for following steps. Bascially, you will need to firstly get an inference offline model (`.om` file) by converting a pretrained deep learning model (TensorFlow/PyTorch/MindSpore/Caffe) using the `Ascend Tensor Compiler (ATC)` tool. The APIs to run the om model is `AscendCL`. A quick guide and experiment can be found [here](https://www.notion.so/hiascend/Public-Huawei-Ascend-Community-0308233b512e4a55b261dd00e1ad565b). 
-
-1. Get the model: refer to the [list of supported modules](#available-modules) below and get the model you wish to run. Once downloaded, rename the '.om' and store the file inside the `models` subdirectory. 
-
-2. Turn on DJI Tello and connect it to the 200 DK via a wireless router. For more details, please refer to the [TP Link Wireless Router Setup Guide](https://github.com/Ascend-Huawei/HiFly_Drone/wiki/TP-Link-Wireless-Router-Setup).
-    >Note that you are not limited to only TPLink Wireless Routers 
-
-3. Once the offline model is in place and the UAV is connected to the 200 DK. Activate the virtual environment and navigate to the project's `src` subdirectory:
-
-    1. To prepare the presenter server to view live video footage
-
-        `bash lib/server/run_presenter_server.sh uav_presenter_server.conf`
-    
-    2. Run real-time inference
-
-        `python3 main.py`
-
-4. Running the above will prompt a manual on the terminal. Select the task and models you wish to use. The inference result can be found at http://127.0.0.1:7007.
-
-    Click [here](#code-implementation) to learn more about what the program is doing in the back
-
-## How to run face tracking project
-1. Download the [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture) (`yolo_model.om`), rename it as `face_detection.om`, and store the file inside the `models` subdirectory. 
-2. Follow this [guide](src/pid_controllers) to run the PIDtracker. (Set `--use_ps=True` for live stream on PC)
+<hr>
 
 ## Code Implementation
+A brief summary on how the core nodes are implemented and how to extend them for your own application. The core nodes are located under `HiFly_Drone/ros_atlas/core`
 
-The modularity feature of this project is enabled by the `ModuleSelector`. It takes the user's specification and dynamically load the corresponding  `Processor`  to handle real-time inference    
+![ROS Core Nodes](https://github.com/jwillow19/HiFly_Drone/blob/main/.github/images/ros_integration.png)
 
 |   File   |         Description           |
 |:--------:|:-----------------------------:|
-| `main.py`| Main script to invoke the interface and prompts user to select a model for inference      |
-| `ModuleSelector.py`     | `ModuleSelector` Python class that takes the user's specifications and decides which task-specific `Processor` to load for inference |
-| `BaseProcessor.py`      | Parent Processor class responsible for initialization of ACL resources and Model parameters. Each inference model have their respective `Processor` (child of `BaseProcessor`) for pre-and-post processing |
-| `params.py`             | Hash table storing information for each task (which offline model to use and its corresponding Processor)  
+| `CameraPublisher.py`   | Main script to publish livestream from drone to the `/tello/cam_data_raw` topic |
+| `BaseInference.py`     | Parent class to be inherited by models class for inference. Listens to `/tello/cam_data_raw`, make inference, and publish the inference results to `/acl_inferece/<model_name>`|
+| `BasePostprocessor.py` | Parent class for postprocessing the inference results. Listens to `/acl_inference/<model_name>`, postprocess, and publish the final results to `/postprocess/<model_name>` |
 
-### Project Extension
+## Project Extension
 To add your own inference module to this project, you need:
 
 1. An offline model stored in the `model` subdirectory (you can view the projects in [Ascend Samples](https://gitee.com/ascend/samples) for more ideas or use the Ascend Tensor Compiler [ATC] to convert .caffe or .pb models into .om models).
 
-2. Write a custom `Processor` class (inherited from `BaseProcessor`) to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
-
-3. Register the model's info to the dictionary in `src/utils/params.py` such that the `ModuleSelector` will know which Processor and model to load during selection
-
-    For example, to add a YOLO face detector module for object detection, you would add another dictionary item inside object_detection. The dictionary is required to have the following keys to run the `ModuleSelector` and `Processor`: `model_width`, `model_height`, `model_path`, `model_processor`
+2. Register your offline model's info and metadata to the dictionary in `ros_atlas/utils/params.py`. For example, to add a YOLO face detector module for object detection, you would add a dictionary item under `object_detection`. The dictionary is required to have the following keys to run successfully: `model_width`, `model_height`, `model_path`, `model_processor`
     ```python
     "object_detection": {
         "face_detection": {
@@ -109,20 +158,11 @@ To add your own inference module to this project, you need:
                 "model_path": os.path.join(paths["MODEL_PATH"], "face_detection.om"),
                 "model_processor": "FaceDetectionProcessor",
                 "model_info": "<model description>",
-                "camera_width": "<optional parameters>"960,
-                "camera_height": 720,
             }
     }
     ```
     > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
-## Available Modules
-A list of integrated modules.
-|   Model   |         Rename the OM            | Terminal Manual
-|:--------:|:-----------------------------:|:-----------------------------:|
-| [YOLO Face Detector](https://gitee.com/ascend/samples/tree/master/python/contrib/head_pose_picture)|`face_detection.om`|`object_detection`->`face_detection`|
-| [YOLOv3 Object Detection](https://gitee.com/ascend/samples/tree/master/python/level2_simple_inference/2_object_detection/YOLOV3_coco_detection_picture) |`yolov3.om`|`object_detection`->`object_detection`|
-| [Hand Detection](https://gitee.com/ascend/samples/tree/master/python/contrib/hand_detection_Gitee)|`hand_detection.om`|`object_detection`->`hand_detection`|
-| [Indoor Depth Estimation](https://gitee.com/HardysJin/samples/tree/master/python/contrib/indoor_depth_estimation_picture)|`indoor_depth_estimation.om`|`depth_estimation`->`indoor_depth_estimation`|
-
-
+3. Write a custom `<ModelName>Processor` class in `ros_atlas/model_processor/` (inherited from `BaseProcessor.py`) to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
+3. Write a custom `<ModelName>Node` class (inherited from `BaseInference`) to make inference on livestream data from `CameraPublisher.py` and publish the resutls.
+4. Write a custom `<ModelName>Postprocess` class (inherited from `BasePostprocessor`) to postprocess model's outputs from `ExampleNode.py` and publish the final results.

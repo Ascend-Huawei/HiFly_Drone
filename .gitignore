@@ -143,10 +143,5 @@ cython_debug/
 *.png
 *.jpg
 *.jpeg
-
-model/
-data/
-ros_atlas/catkin_ws/devel/
-ros_atlas/catkin_ws/build/
-ros_atlas/catkin_ws/src/CMakeLists.txt
+.vscode/
 
