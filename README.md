@@ -24,7 +24,7 @@ This project was created while keeping in mind of modularity and fast prototype 
 <hr>
 
 ## ROS implementation
-The following is for simple Python Implementation. For ROS implementation, please refer to [this guide](ros_atlas)
+The following is for simple Python Implementation. For ROS implementation, please refer to [this guide](https://github.com/Ascend-Huawei/HiFly_Drone/tree/ros_atlas)
 
 ## Table of Content
 [Installation](#installation)<br>
