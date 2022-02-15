@@ -42,7 +42,7 @@ docker pull osrf/ros:noetic-desktop-full
 ```
 <hr>
 
-## Setting up ROS packages
+## Setting Up HiFly ROS Packages
 The following steps are required to compile the ROS messages used in this project. Refer to [Creating a ROS msg](http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv) for more details on how to create a ROS message.
 
 0. Login to Atlas 200 DK from PC (Refer to this guide on how to setup and access). _(Note: it is required to use VScode with Remote-SSH extension to login remotely, otherwise you might not get the video stream to display on your PC.)_
@@ -61,9 +61,9 @@ The following steps are required to compile the ROS messages used in this projec
     git clone https://github.com/Ascend-Huawei/HiFly_Drone.git
     ```
 2. Navigate to the project directory<br>
-    `cd HiFly_Drone/ros_atlas`<br>
-2. Copy the `catkin_ws` directory to your local catkin workspace <br>
-    `cp -r ./catkin_ws/src/* ~/catkin_ws/src/`
+    `cd HiFly_Drone`<br>
+2. Copy the ROS packages (`hifly_ros_xxxx`) to your local catkin workspace <br>
+    `cp -r hifly_ros_package1 hifly_ros_package2 ...  ~/catkin_ws/src/`
 3. Navigate to your local catkin workspace _(the catkin_ws in this example is lcoated in the home directory)_ <br>
     `cd ~/catkin_ws`
 4. Compile the source code into ROS packages with `catkin_make` <br>
@@ -78,42 +78,23 @@ The following steps are required to compile the ROS messages used in this projec
 This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
 Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**. 
 
-> 👏 **NOTE**: If you added the optional commands in your `.bashrc` then you may ignore the `conda activate <env_name>` and `source ~/catkin_ws/devel/setup.bash` commands below.
+> 👏 **NOTE**:  Ensure you have compiled the ROS packages and sourced the catkin workspace inside the RoboStack conda environment. See [the previous steps](setting-up-hiFly-ros-packages)
 
-> NOTE: `FDNode.py` is an extension of `BaseInference.py` and `FDProcessor.py` is an extension of `BasePostprocessor.py`
+1. **On the Atlas 200 DK** - Activate the robostack noetic conda environment  <br>
+	```
+	conda activate ros-noetic
+	```
 
-1. **On the Atlas 200 DK**, start the MasterNode <br>
+2.  Launch the base pipeline from `hifly_ros_base` with the provided launch file to start the `CameraPublisher` and `ACLInference` nodes <br>
 	```
-	conda activate <env_name>
-	roscore
-	```
-2. Open a second terminal on the Atlas 200 DK and run the face-detection inference node under the `ros_atlas` directory <br>
-	```
-	conda activate <env_name>
-	source ~/catkin_ws/devel/setup.bash
-	cd ~/HiFly_Drone/ros_atlas
-	python3 FDNode.py
-	```
-3. Open a third terminal on the Atlas 200 DK and run the postprocessing node for face-detection under the `ros_atlas` directory <br>
-	```
-	conda activate <env_name>
-	source ~/catkin_ws/devel/setup.bash
-	python3 FDProcessor.py
-	```
-4. Open a fourth terminal on the Atlas 200 DK and run the camera publisher under the `ros_atlas/core/` directory <br> 
-	```
-	conda activate <env_name>
-	source ~/catkin_ws/devel/setup.bash
-	cd ~/HiFly_Drone/ros_atlas/core/
+	# to run pipeline on a video
+	roslaunch hifly_ros_base base_pipeline.launch use_uav:=False vid_in:=/path/to/your/video model:=face_detection
 	
-	# to run with drone’s live feed (ensure connection b/w drone and 200DK is established)
-	python3 CameraPublisher.py --live-feed
-	
-	# to run without livefeed (on pre-recorded video)
-	python3 CameraPublisher.py --no-live-feed --video_path ABS_PATH_TO_VIDEO 
+	# to run pipeline on stream data from the Tello (requires established connection beforehand)
+	roslaunch hifly_ros_base base_pipeline.launch model:=face_detection
 	```
 	
-5. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
+3. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
 		docker run -it --rm --net=host \
@@ -136,13 +117,12 @@ Before we begin, **ensure the Atlas 200 DK is connected to the drone before you 
 ## Code Implementation
 A brief summary on how the core nodes are implemented and how to extend them for your own application. The core nodes are located under `HiFly_Drone/ros_atlas/core`
 
-![ROS Core Nodes](https://github.com/jwillow19/HiFly_Drone/blob/main/.github/images/ros_integration.png)
+![ROS Core Nodes](https://github.com/Ascend-Huawei/HiFly_Drone/blob/main/.github/images/ros_integration.png)
 
 |   File   |         Description           |
 |:--------:|:-----------------------------:|
-| `CameraPublisher.py`   | Main script to publish livestream from drone to the `/tello/cam_data_raw` topic |
-| `BaseInference.py`     | Parent class to be inherited by models class for inference. Listens to `/tello/cam_data_raw`, make inference, and publish the inference results to `/acl_inferece/<model_name>`|
-| `BasePostprocessor.py` | Parent class for postprocessing the inference results. Listens to `/acl_inference/<model_name>`, postprocess, and publish the final results to `/postprocess/<model_name>` |
+| `CameraPublisher.py`   | Main node to publish livestream from drone to the `topic:/tello/cam_data_raw` |
+| `ACLInference.py`      | Base node to run inference on image data from `@topic:/tello/cam_data_raw` and publishes results to `@topic:/acl_inference/<model_name>` | 
 
 ## Project Extension
 To add your own inference module to this project, you need:
@@ -164,5 +144,4 @@ To add your own inference module to this project, you need:
     > Note that you may also pass in other parameters in the dictionary for later uses by deconstructing them in the `params` argument in your `Processor` class
 
 3. Write a custom `<ModelName>Processor` class in `ros_atlas/model_processor/` (inherited from `BaseProcessor.py`) to take care of the offline model's inputs and outputs by overriding the preprocess and postprocess methods.
-3. Write a custom `<ModelName>Node` class (inherited from `BaseInference`) to make inference on livestream data from `CameraPublisher.py` and publish the resutls.
-4. Write a custom `<ModelName>Postprocess` class (inherited from `BasePostprocessor`) to postprocess model's outputs from `ExampleNode.py` and publish the final results.
+3. Specify the model to run in ACLInference by passing the corresponding model name saved to `params.py` as an argument when running `roslaunch` or `rosrun`. For example: `roslaunch hifly_ros_base base_pipeline.launch model:=your_model_name`
