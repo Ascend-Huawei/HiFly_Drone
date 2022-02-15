@@ -78,14 +78,15 @@ The following steps are required to compile the ROS messages used in this projec
 This is a simple demonstration on how to run the pipeline with a FaceDetection model on livestreamed images from the drone. 
 Before we begin, **ensure the Atlas 200 DK is connected to the drone before you run the pipeline**. 
 
-> 👏 **NOTE**:  Ensure you have compiled the ROS packages and sourced the catkin workspace inside the RoboStack conda environment. See [the previous steps](setting-up-hiFly-ros-packages)
+> 👏 **NOTE**:  Ensure **you have compiled the ROS packages and sourced the catkin workspace inside the RoboStack conda environment. See [the previous steps](setting-up-hiFly-ros-packages)**
 
 1. **On the Atlas 200 DK** - Activate the robostack noetic conda environment  <br>
 	```
 	conda activate ros-noetic
 	```
+2. Save the corresponding `.om` model file to `HiFly_Drone/hifly_ros_base/model` - You can refer to the available models on the [main branch's README](https://github.com/Ascend-Huawei/HiFly_Drone) or view the [release page](https://github.com/Ascend-Huawei/HiFly_Drone/releases). <br>
 
-2.  Launch the base pipeline from `hifly_ros_base` with the provided launch file to start the `CameraPublisher` and `ACLInference` nodes <br>
+3.  Launch the base pipeline from `hifly_ros_base` with the provided launch file to start the `CameraPublisher` and `ACLInference` nodes <br>
 	```
 	# to run pipeline on a video
 	roslaunch hifly_ros_base base_pipeline.launch use_uav:=False vid_in:=/path/to/your/video model:=face_detection
@@ -94,7 +95,7 @@ Before we begin, **ensure the Atlas 200 DK is connected to the drone before you 
 	roslaunch hifly_ros_base base_pipeline.launch model:=face_detection
 	```
 	
-3. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
+4. **On your local machine (your laptop or desktop)**, open a docker visualization GUI <br>
 	1. **On the host** Create a temporary container from the native `osrf/ros:noetic` image. Specify the environment variables and bind-mount volume (this command mounts (shares) the host's x11 unix socket)<br>
 		```
 		docker run -it --rm --net=host \
