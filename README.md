@@ -2,6 +2,10 @@
 Introducing the Ascend Eco-Platform for Intelligent UAVs - Enabled by the Atlas 200 DK and DJI Tello to achieve real-time deep learning solutions and fast prototyping to developers.
 This project was created while keeping in mind of modularity and fast prototype development. We hope to build ready-to-use modularized capabilities for developers interested in taking deep learning to the realm of UAVs.
 
+<p align="center">
+  <img src="HiFly.PNG" width="600" title="HiFly System">
+</p>
+
 ### Useful Links
 [Official Atlas 200 DK Developer Kit](https://support.huaweicloud.com/intl/en-us/environment-deployment-Atlas200DK202/atlased_04_0029.html "Atlas 200 DK Upgrade")<br>
 [Ascend Samples](https://gitee.com/ascend/samples) <br>
