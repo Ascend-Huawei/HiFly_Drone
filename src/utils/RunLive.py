@@ -63,5 +63,5 @@ class LiveRunner:
 
             """ Display inference results and send to presenter channel """
             _, jpeg_image = cv2.imencode('.jpg', result_img)
-            jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
+            # jpeg_image = AclImage(jpeg_image, frame_org.shape[0], frame_org.shape[1], jpeg_image.size)
             chan.send_detection_data(frame_org.shape[0], frame_org.shape[1], jpeg_image, [])
